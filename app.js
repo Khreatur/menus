@@ -3,20 +3,21 @@ async function fetchRecipes() {
     const res = await fetch("/api/recipes");
     const data = await res.json();
 
-    if (!data.results || !Array.isArray(data.results)) {
-      console.error("Aucune recette trouvée ou réponse invalide :", data);
+    // Toujours retourner un tableau, même si data.results est absent
+    if (!data || !Array.isArray(data.results)) {
+      console.error("Réponse invalide de l'API Notion :", data);
       return [];
     }
 
     return data.results;
   } catch (err) {
-    console.error("Erreur fetch /api/recipes :", err);
+    console.error("Erreur lors du fetch /api/recipes :", err);
     return [];
   }
 }
 
 function showRecipe(recipe) {
-  const name = recipe.properties?.Nom?.title[0]?.plain_text || "Sans nom";
+  const name = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
   document.getElementById("recipe").textContent = name;
 }
 
