@@ -28,7 +28,7 @@ export default async function handler(req, res) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          page_size: 100, // Limite à 100 recettes
+          page_size: 500, // Limite à 100 recettes
           filter: {
             or: [] // tu peux mettre un filtre si besoin
           }
