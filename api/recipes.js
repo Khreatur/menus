@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const DATABASE_ID = process.env.DATABASE_ID;
+const DATABASE_ID = process.env.NOTION_DB;
 
 export default async function handler(req, res) {
   try {
