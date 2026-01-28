@@ -14,12 +14,10 @@ async function fetchRecipes() {
   try {
     const res = await fetch("/api/recipes");
     const data = await res.json();
-
     if (!data || !Array.isArray(data.results)) {
       console.error("Réponse invalide de l'API Notion :", data);
       return [];
     }
-
     return data.results;
   } catch (err) {
     console.error("Erreur lors du fetch /api/recipes :", err);
@@ -27,41 +25,69 @@ async function fetchRecipes() {
   }
 }
 
-// --- Affichage d’une recette dans un bloc existant ---
-function updateRecipeBlock(block, recipe) {
-  // Récupération du nom
-  const name = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
-
-  // Récupération de l’icône
-  let iconHTML = "";
-  if (recipe.icon) {
-    if (recipe.icon.type === "emoji") {
-      iconHTML = recipe.icon.emoji;
-    } else if (recipe.icon.type === "external") {
-      iconHTML = `<img src="${recipe.icon.external.url}" alt="" style="width:20px;vertical-align:middle;margin-right:6px;">`;
-    }
-  }
-
-  // Mise à jour du bloc
-  block.querySelector(".icon").innerHTML = iconHTML;
-  block.querySelector(".name").textContent = name;
-}
-
 // --- Récupère une recette aléatoire ---
 function getRandomRecipe(recipes) {
   return recipes[Math.floor(Math.random() * recipes.length)];
 }
 
-// --- Génération de l’interface des 7 blocs ---
+// --- Affichage de la pop-in ingrédients ---
+function showIngredients(recipe) {
+  const title = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
+  const ingredients = recipe?.properties?.Ingredients?.multi_select || [];
+
+  document.getElementById("popup-title").textContent = title;
+
+  const list = document.getElementById("popup-ingredients");
+  list.innerHTML = "";
+
+  ingredients.forEach(ing => {
+    const li = document.createElement("li");
+
+    let iconHTML = "🍴";
+    if (ing.icon) {
+      if (ing.icon.type === "emoji") iconHTML = ing.icon.emoji;
+      else if (ing.icon.type === "external") {
+        iconHTML = `<img src="${ing.icon.external.url}" alt="" style="width:16px;margin-right:6px;vertical-align:middle;">`;
+      }
+    }
+
+    li.innerHTML = `${iconHTML} ${ing.name}`;
+    list.appendChild(li);
+  });
+
+  document.getElementById("recipe-popup").classList.remove("hidden");
+}
+
+// --- Affichage d’une recette dans un bloc existant ---
+function updateRecipeBlock(block, recipe) {
+  const name = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
+
+  let iconHTML = "";
+  if (recipe.icon) {
+    if (recipe.icon.type === "emoji") iconHTML = recipe.icon.emoji;
+    else if (recipe.icon.type === "external") {
+      iconHTML = `<img src="${recipe.icon.external.url}" alt="" style="width:20px;vertical-align:middle;margin-right:6px;">`;
+    }
+  }
+
+  block.querySelector(".icon").innerHTML = iconHTML;
+  block.querySelector(".name").textContent = name;
+
+  // Stocker la recette dans dataset pour la pop-in
+  block.dataset.recipe = JSON.stringify(recipe);
+}
+
+// --- Initialisation des 7 blocs ---
 async function initMenu() {
   const recipes = await fetchRecipes();
+  const menuContainer = document.getElementById("menu-list");
+
   if (!recipes.length) {
-    document.getElementById("menu-list").textContent = "Aucune recette disponible";
+    menuContainer.textContent = "Aucune recette disponible";
     return;
   }
 
-  const menuContainer = document.getElementById("menu-list");
-  menuContainer.innerHTML = ""; // vide le container
+  menuContainer.innerHTML = "";
 
   DAYS_MEALS.forEach((dm, index) => {
     const recipe = getRandomRecipe(recipes);
@@ -70,7 +96,6 @@ async function initMenu() {
     recipeDiv.classList.add("menu-item");
     recipeDiv.dataset.index = index;
 
-    // Contenu initial du bloc
     recipeDiv.innerHTML = `
       <span class="day">${dm.day} ${dm.meal}</span>
       <span class="icon"></span>
@@ -78,11 +103,18 @@ async function initMenu() {
       <button class="modify-btn">Modifier</button>
     `;
 
-    // Ajouter le bloc au container
     menuContainer.appendChild(recipeDiv);
 
-    // Affichage initial de la recette
+    // Affichage initial
     updateRecipeBlock(recipeDiv, recipe);
+
+    // Clic sur le nom ou l'icône pour afficher la pop-in
+    const showPopup = () => {
+      const currentRecipe = JSON.parse(recipeDiv.dataset.recipe);
+      showIngredients(currentRecipe);
+    };
+    recipeDiv.querySelector(".name").addEventListener("click", showPopup);
+    recipeDiv.querySelector(".icon").addEventListener("click", showPopup);
 
     // Bouton modifier
     recipeDiv.querySelector(".modify-btn").addEventListener("click", () => {
@@ -92,5 +124,5 @@ async function initMenu() {
   });
 }
 
-// --- Démarrage ---
-initMenu();
+// --- Fermeture de la pop-in ---
+document.getElementById("popup-close").addEventListen
