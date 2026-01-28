@@ -13,7 +13,7 @@ const slots = [
 let recipesCache = [];
 
 // Conteneur principal dans le DOM
-const menuContainer = document.getElementById("menu-container");
+const menuContainer = document.getElementById("menu-list");
 
 // --- Fetch Notion ---
 async function fetchRecipes() {
