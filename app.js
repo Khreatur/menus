@@ -32,19 +32,31 @@ function getRandomRecipe() {
 }
 
 // Génère l'HTML de la recette
+// Génère l'HTML de la recette avec icône
 function renderMenuItem(slot, recipe, index) {
   const name = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
+
+  // --- Récupération icône ---
+  let iconHTML = "";
+  if (recipe.icon) {
+    if (recipe.icon.type === "emoji") {
+      iconHTML = `<span style="margin-right:6px;">${recipe.icon.emoji}</span>`;
+    } else if (recipe.icon.type === "external") {
+      iconHTML = `<img src="${recipe.icon.external.url}" alt="" style="width:20px; vertical-align:middle; margin-right:6px;">`;
+    }
+  }
 
   return `
     <div class="menu-item" data-index="${index}">
       <div class="left">
         <strong>${slot}</strong>
-        <span>${name}</span>
+        <span>${iconHTML}${name}</span>
       </div>
       <button class="modify-btn">Modifier</button>
     </div>
   `;
 }
+
 
 // Affiche toutes les recettes
 async function showMenu() {
