@@ -7,17 +7,17 @@ body, html {
   color: #333;
 }
 
-/* Container principal */
+/* Container principal prend toute la largeur */
 .app {
-  max-width: 600px;
-  margin: 0 auto;
+  width: 100%;
   padding: 16px;
+  box-sizing: border-box;
 }
 
 /* Titre */
 h1 {
   text-align: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
   margin-bottom: 24px;
 }
 
@@ -27,33 +27,32 @@ h1 {
   align-items: center;
   justify-content: space-between;
   background: #fff;
-  padding: 12px 16px;
+  padding: 16px;
   margin-bottom: 12px;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  font-size: 1.1rem;
+  font-size: 1.3rem; /* texte plus grand */
+  width: 100%; /* prend toute la largeur */
+  box-sizing: border-box;
 }
 
 /* Jour et repas */
 .menu-item .day {
-  flex: 0 0 120px; /* largeur fixe pour le jour/repas */
   font-weight: bold;
-  font-size: 0.95rem;
+  margin-right: 12px;
 }
 
 /* Icône */
 .menu-item .icon {
-  flex: 0 0 28px;
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.5rem; /* icône plus grande */
   margin-right: 8px;
 }
 
 /* Nom recette */
 .menu-item .name {
   flex: 1;
-  font-size: 1.1rem;
-  margin-left: 4px;
+  font-size: 1.3rem;
 }
 
 /* Bouton Modifier */
@@ -62,8 +61,8 @@ h1 {
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 0.95rem;
+  padding: 8px 16px;
+  font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -77,11 +76,9 @@ h1 {
   .menu-item {
     flex-direction: column;
     align-items: flex-start;
-    padding: 10px;
+    padding: 12px;
   }
-  .menu-item .day {
-    margin-bottom: 4px;
-  }
+  .menu-item .day,
   .menu-item .icon {
     margin-bottom: 4px;
   }
