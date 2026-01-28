@@ -2,7 +2,7 @@
 import fetch from "node-fetch";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN; // on met le token dans Vercel
-const DATABASE_ID = "e2fbca1712354b1da42262431312bbd7";
+const DATABASE_ID = process.env.NOTION_DB;
 
 export default async function handler(req, res) {
   try {
