@@ -2,7 +2,7 @@ async function fetchRecipes() {
   try {
     const res = await fetch("/api/recipes");
     const data = await res.json();
-    console.log(data.results); // toutes tes recettes
+    
 
     // Toujours retourner un tableau, même si data.results est absent
     if (!data || !Array.isArray(data.results)) {
