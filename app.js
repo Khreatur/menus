@@ -19,8 +19,24 @@ async function fetchRecipes() {
 
 function showRecipe(recipe) {
   const name = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
-  document.getElementById("recipe").textContent = name;
+
+  let iconHTML = "";
+
+  // Vérifie si la recette a une icône
+  if (recipe.icon) {
+    if (recipe.icon.type === "emoji") {
+      iconHTML = `<span style="margin-right:6px">${recipe.icon.emoji}</span>`;
+    } else if (recipe.icon.type === "external") {
+      iconHTML = `<img src="${recipe.icon.external.url}" 
+                        alt="" 
+                        style="width:20px; height:20px; vertical-align:middle; margin-right:6px;">`;
+    }
+  }
+
+  // Affiche icône + nom
+  document.getElementById("recipe").innerHTML = `${iconHTML}${name}`;
 }
+
 
 async function showRandomRecipe() {
   const recipes = await fetchRecipes();
