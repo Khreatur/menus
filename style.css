@@ -2,11 +2,16 @@
 body, html {
   margin: 0;
   padding: 0;
-  font-family: Arial, sans-serif;
-  background: #f7f7f7;
-  color: #333;
+  font-family: Helvetica, sans-serif;
+  background: #cbc5ea;
+  color: #16001e;
 }
-
+button {
+  all: unset;       /* supprime toutes les propriétés héritées et par défaut */
+  display: inline-block; /* rétablir le comportement inline/block si nécessaire */
+  box-sizing: border-box;
+  cursor: pointer;  /* remettre le curseur pointer */
+}
 /* Container principal prend toute la largeur */
 .app {
   width: 100%;
@@ -19,6 +24,7 @@ h1 {
   text-align: center;
   font-size: 2rem;
   margin-bottom: 24px;
+  color:#16001e
 }
 
 /* Bloc recette */
@@ -30,16 +36,29 @@ h1 {
   padding: 16px;
   margin-bottom: 12px;
   border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   font-size: 1.3rem; /* texte plus grand */
   width: 100%; /* prend toute la largeur */
   box-sizing: border-box;
+}
+
+.menu-item .header {
+  display: flex;
+  justify-content: space-between; /* espace entre left et bouton */
+  align-items: center;
+  width: 100%;
+}
+
+.menu-item .name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* espace entre day, icon, name */
 }
 
 /* Jour et repas */
 .menu-item .day {
   font-weight: bold;
   margin-right: 12px;
+
 }
 
 /* Icône */
@@ -55,37 +74,15 @@ h1 {
   font-size: 1.3rem;
 }
 
-/* Bouton Modifier */
-.menu-item .modify-btn {
-  background-color: #0070f3;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
+.modify-btn {
 
-.menu-item .modify-btn:hover {
-  background-color: #005ecb;
-}
+background-color: #f7717d; 
+color: white; 
+font-weight: bold; 
+border-radius: 6px; 
+padding: 8px 16px; 
+font-size: 1rem;
 
-/* Responsive mobile */
-@media (max-width: 480px) {
-  .menu-item {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 12px;
-  }
-  .menu-item .day,
-  .menu-item .icon {
-    margin-bottom: 4px;
-  }
-  .menu-item .modify-btn {
-    align-self: flex-end;
-    margin-top: 8px;
-  }
 }
 
 .popup {
@@ -99,6 +96,7 @@ h1 {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  color : #23231a;
 }
 
 .popup-content {
@@ -114,13 +112,6 @@ h1 {
   display: none;
 }
 
-#popup-close {
-  position: absolute;
-  top: 10px;
-  right: 16px;
-  cursor: pointer;
-  font-size: 24px;
-}
 #recipe-popup.hidden { display: none; }
 #recipe-popup {
   position: fixed;
@@ -138,3 +129,38 @@ h1 {
   width: 90%;
 }
 
+#popup-ingredients {
+  list-style: none;       /* supprime les puces */
+  padding: 0;             /* supprime le padding par défaut */
+  margin: 0;              /* supprime la marge par défaut */
+}
+
+#loader {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+
+.send-mail-btn {
+  display: block;
+  margin: 24px auto 0;
+  background-color: #16001e;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.send-mail-btn:hover {
+  background-color: #2a0038;
+}
+
+.send-mail-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

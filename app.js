@@ -1,3 +1,4 @@
+// ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
   { day: "Dimanche", meal: "midi" },
   { day: "Dimanche", meal: "soir" },
@@ -8,16 +9,13 @@ const DAYS_MEALS = [
   { day: "Vendredi", meal: "soir" },
 ];
 
+let selectedRecipes = [];
+// ---------- SAISON ---------- //
 function getCurrentSeason() {
   const now = new Date();
-  const month = now.getMonth() + 1; // getMonth() renvoie 0-11
+  const month = now.getMonth() + 1;
   const day = now.getDate();
 
-  // Dates approximatives des saisons dans l’hémisphère nord
-  // Printemps : 20 mars – 20 juin
-  // Été : 21 juin – 22 septembre
-  // Automne : 23 septembre – 20 décembre
-  // Hiver : 21 décembre – 19 mars
   if ((month === 3 && day >= 20) || (month > 3 && month < 6) || (month === 6 && day <= 20)) {
     return "Printemps";
   } else if ((month === 6 && day >= 21) || (month > 6 && month < 9) || (month === 9 && day <= 22)) {
@@ -29,17 +27,15 @@ function getCurrentSeason() {
   }
 }
 
+// ---------- FETCH RECIPES ---------- //
 async function fetchRecipes() {
   try {
     const res = await fetch("/api/recipes");
     const data = await res.json();
-
-
     if (!data || !Array.isArray(data.results)) {
       console.error("Réponse invalide de l'API Notion :", data);
       return [];
     }
-
     return data.results;
   } catch (err) {
     console.error("Erreur fetch /api/recipes :", err);
@@ -47,76 +43,99 @@ async function fetchRecipes() {
   }
 }
 
-function updateRecipeBlock(block, recipe) {
-  const name = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
-
-  // icône recette
-  let iconHTML = "";
-  if (recipe.icon) {
-    if (recipe.icon.type === "emoji") iconHTML = recipe.icon.emoji;
-    else if (recipe.icon.type === "external")
-      iconHTML = `<img src="${recipe.icon.external.url}" style="width:20px;vertical-align:middle;margin-right:6px;">`;
-  }
-
-  block.querySelector(".icon").innerHTML = iconHTML;
-  block.querySelector(".name").textContent = name;
-
-}
-
-let ingredientMap = {}; // global pour lookup
+// ---------- FETCH INGREDIENT MAP ---------- //
+let ingredientMap = {}; // global
 
 async function fetchIngredientMap() {
   try {
     const res = await fetch("/api/ingredients");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!data.results) return;
+
+    if (!Array.isArray(data.results)) return {};
 
     ingredientMap = {};
     data.results.forEach(ing => {
-      ingredientMap[ing.name] = ing.icon || null;
+      if (!ing.name) return;
+      if (ing.icon?.type === "emoji") ingredientMap[ing.name] = ing.icon.emoji;
+      else if (ing.icon?.type === "custom_emoji") ingredientMap[ing.name] = ing.icon.custom_emoji.url;
+      else if (ing.icon?.type === "external") ingredientMap[ing.name] = ing.icon.external.url;
+      else if (ing.icon?.type === "file") ingredientMap[ing.name] = ing.icon.file.url;
+      else ingredientMap[ing.name] = null;
     });
   } catch (err) {
     console.error("Erreur fetch /ingredients :", err);
+    ingredientMap = {};
   }
 }
 
+// ---------- UPDATE RECIPE BLOCK ---------- //
+function updateRecipeBlock(block, recipe) {
+  const name = recipe?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
 
-// Pop-in
+  let iconHTML = "";
+  if (recipe.icon) {
+    if (recipe.icon.type === "emoji") iconHTML = recipe.icon.emoji;
+    else if (recipe.icon.type === "external")
+      iconHTML = `<img src="${recipe.icon.external.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+    else if (recipe.icon.type === "custom_emoji")
+    iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+   else if (recipe.icon.type === "file")
+    iconHTML = `<img src="${recipe.icon.file.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+   
+  }
+
+  block.querySelector(".icon").innerHTML = iconHTML;
+  block.querySelector(".name").textContent = name;
+}
+
+// ---------- POP-IN INGREDIENTS ---------- //
 function showIngredients(recipe) {
-  const title = recipe?.properties?.Nom?.title[0]?.plain_text || "Sans nom";
+  const title = recipe?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
   const ingredients = recipe?.properties?.Ingredients || [];
 
   document.getElementById("popup-title").textContent = title;
-
   const list = document.getElementById("popup-ingredients");
   list.innerHTML = "";
 
   ingredients.forEach(ing => {
     const li = document.createElement("li");
+    const icon = ingredientMap?.[ing.name];
+    let iconHtml = "";
 
-    // lookup dans ingredientMap
-    let ingIcon = "";
-    const iconData = ingredientMap[ing.name];
-    if (iconData) {
-      if (iconData.type === "emoji") ingIcon = iconData.emoji;
-      else if (iconData.type === "external") {
-        ingIcon = `<img src="${iconData.external.url}" style="width:16px;margin-right:6px;vertical-align:middle;">`;
+    if (icon) {
+      if (icon.startsWith("http")) {
+        iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+      } else {
+        iconHtml = `${icon} `;
       }
     }
 
-    li.innerHTML = `${ingIcon} ${ing.name}`;
+    li.innerHTML = `${iconHtml}${ing.name}`;
     list.appendChild(li);
   });
 
   document.getElementById("recipe-popup").classList.remove("hidden");
 }
 
+const popup = document.getElementById("recipe-popup");
 
-// fermeture pop-in
-document.getElementById("popup-close")?.addEventListener("click", () => {
-  document.getElementById("recipe-popup").classList.add("hidden");
-});
+// fermer la pop-in au clic
+popup.onclick = () => {
+  popup.classList.add("hidden");
+};
 
+
+
+// ---------- UTILITAIRES ---------- //
+
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // supprime accents
+    .trim();
+}
 function getRandomRecipe(recipes) {
   return recipes[Math.floor(Math.random() * recipes.length)];
 }
@@ -129,50 +148,56 @@ function filterRecipesBySeason(recipes, season) {
 }
 
 function isSoup(recipe) {
-  const categories = recipe.properties?.Categorie?.multi_select || [];
+  const categories = recipe?.properties?.Categorie?.multi_select || [];
   return categories.some(c => c.name === "SOUPE");
 }
 
-function getRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+function extractRecipeForEmail(recipe) {
+  return {
+    nom: recipe?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom",
+    ingredients: (recipe?.properties?.Ingredients || []).map(i => i.name)
+  };
+}
+
+function getNextMondayLabel() {
+  const today = new Date();
+  const day = today.getDay(); // 0 = dimanche
+
+  const daysUntilNextMonday = (8 - day) % 7 || 7;
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilNextMonday);
+
+  const options = { day: "numeric", month: "long" };
+  const formattedDate = nextMonday.toLocaleDateString("fr-FR", options);
+
+  return `Menus de la semaine du ${formattedDate}`;
 }
 
 
-
-
-// -------- INIT ------------ //
+// ---------- INIT MENU ---------- //
 async function initMenu() {
   const allRecipes = await fetchRecipes();
-const CURRENT_SEASON = getCurrentSeason();
-const recipes = filterRecipesBySeason(allRecipes, CURRENT_SEASON);
-const soups = recipes.filter(r =>
-  r.properties?.Categorie?.multi_select?.some(c => c.name === "SOUPE")
-);
-
-
-if (!recipes.length) {
-  document.getElementById("menu-list").textContent =
-    `Aucune recette pour la saison : ${CURRENT_SEASON}`;
-  return;
-}
+  const CURRENT_SEASON = getCurrentSeason();
+  const recipes = filterRecipesBySeason(allRecipes, CURRENT_SEASON);
+  const soups = recipes.filter(isSoup);
 
   if (!recipes.length) {
-    document.getElementById("menu-list").textContent = "Aucune recette disponible";
+    document.getElementById("menu-list").textContent =
+      `Aucune recette pour la saison : ${CURRENT_SEASON}`;
     return;
   }
 
-
   const menuContainer = document.getElementById("menu-list");
   menuContainer.innerHTML = "";
-
+  selectedRecipes = [];
   DAYS_MEALS.forEach((dm, index) => {
     let recipe;
-
-if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
-  recipe = getRandomRecipe(soups); // Dimanche soir = soupe
-} else {
-  recipe = getRandomRecipe(recipes);
-}
+    if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
+      recipe = getRandomRecipe(soups); // Dimanche soir = soupe
+    } else {
+      recipe = getRandomRecipe(recipes);
+    }
+    selectedRecipes[index] = recipe;
 
 
     const div = document.createElement("div");
@@ -181,15 +206,16 @@ if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
 
     div.innerHTML = `
       <div class="header">
+       <div class="name-wrapper">
         <span class="day">${dm.day} ${dm.meal}</span>
         <span class="icon"></span>
         <span class="name"></span>
+        </div>
         <button class="modify-btn">Modifier</button>
       </div>
     `;
 
     menuContainer.appendChild(div);
-
     updateRecipeBlock(div, recipe);
 
     // clic sur nom ou icône ouvre la pop-in
@@ -199,27 +225,209 @@ if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
     // bouton modifier
     div.querySelector(".modify-btn").addEventListener("click", () => {
       let newRecipe;
-
       if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
         newRecipe = getRandomRecipe(soups);
       } else {
         newRecipe = getRandomRecipe(recipes);
       }
-
+      selectedRecipes[index] = newRecipe;
       updateRecipeBlock(div, newRecipe);
-
       div.querySelector(".name").onclick = () => showIngredients(newRecipe);
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
     });
-
   });
 }
 
-// démarrage
-async function startApp() {
-  await fetchIngredientMap(); // populate ingredientMap
-  await initMenu();           // puis afficher le menu
+// ----- PREPARATION DU MAIL -------- //
+async function loadIngredientLocations() {
+  try {
+    const res = await fetch("/api/ingredients"); 
+    if (!res.ok) throw new Error("Impossible de charger les ingrédients depuis Notion");
+
+    const data = await res.json();
+
+    const map = {}; // map lieux
+    const icons = {}; // map icônes
+
+    data.results.forEach(ing => {
+      if (!ing.name) return;
+
+      map[ing.name] = ing.lieu || "Lieu inconnu";
+
+      if (ing.icon?.type === "emoji") icons[ing.name] = ing.icon.emoji;
+      else if (ing.icon?.type === "custom_emoji") icons[ing.name] = ing.icon.custom_emoji.url;
+      else if (ing.icon?.type === "external") icons[ing.name] = ing.icon.external.url;
+      else if (ing.icon?.type === "file") icons[ing.name] = ing.icon.file.url;
+      else icons[ing.name] = null;
+    });
+
+    return { locations: map, icons: icons };
+  } catch (err) {
+    console.error("Erreur loadIngredientLocations :", err);
+    return { locations: {}, icons: {} };
+  }
 }
 
+function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
+  const shopping = {};
+
+  recipes.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
+
+      if (!shopping[lieu]) shopping[lieu] = new Set();
+      shopping[lieu].add(ing);
+    });
+  });
+
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
+
+  return sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3); // retire "1 - "
+    const items = Array.from(shopping[lieu]).sort();
+
+    return `
+      <div style="margin-top:16px;">
+        <strong>${displayLieu}</strong>
+        <ul>
+          ${items.map(i => {
+            const icon = iconsMap[i];
+            let iconHtml = "";
+            if (icon) {
+              if (icon.startsWith("http")) {
+                iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+              } else {
+                iconHtml = `${icon} `;
+              }
+            }
+            return `<li>${iconHtml}${i}</li>`;
+          }).join("")}
+        </ul>
+      </div>
+    `;
+  }).join("");
+}
+
+async function copyShoppingListToClipboard(locationsMap, iconsMap, recipes) {
+  // créer une version texte simple : lieu + ingrédients
+  const shopping = {};
+
+  recipes.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
+      if (!shopping[lieu]) shopping[lieu] = new Set();
+      shopping[lieu].add(ing);
+    });
+  });
+
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
+
+  const textList = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3); // retire "1 - "
+    const items = Array.from(shopping[lieu]).sort();
+    return `${displayLieu}:\n${items.map(i => ` - ${i}`).join("\n")}`;
+  }).join("\n\n");
+
+  try {
+    await navigator.clipboard.writeText(textList);
+    console.log("Liste de course copiée dans le presse-papier ✅");
+  } catch (err) {
+    console.error("Impossible de copier dans le presse-papier :", err);
+  }
+}
+
+
+
+async function sendEmail() {
+  try {
+    const { locations, icons } = await loadIngredientLocations();
+    const recipesForMail = selectedRecipes.map(extractRecipeForEmail);
+
+    // générer HTML
+    const recipesHTML = recipesForMail.map(r => `
+      <p style="margin-bottom:12px;">
+        <strong>${r.nom}</strong><br/>
+        ${r.ingredients.join(", ")}
+      </p>
+    `).join("");
+
+    const shoppingHTML = buildShoppingListHTML(locations, icons, recipesForMail);
+
+    const messageHTML = `
+      <div style="font-family: Arial, sans-serif; line-height:1.4;">
+        <h2>Recettes sélectionnées</h2>
+        ${recipesHTML}
+
+        <hr style="margin:24px 0;" />
+
+        <h2>Liste de courses</h2>
+        ${shoppingHTML}
+      </div>
+    `;
+
+    // envoi du mail
+    await emailjs.send(
+      "service_yalsbhe",
+      "template_ltk6cvx",
+      {
+        title: getNextMondayLabel(),
+        message_html: messageHTML
+      }
+    );
+
+    // copie dans le presse-papier
+    await copyShoppingListToClipboard(locations, icons, recipesForMail);
+
+  } catch (err) {
+    console.error("Erreur lors de l'envoi de l'email :", err);
+    alert("Erreur lors de l'envoi de l'email ❌");
+  }
+}
+
+
+
+// ---------- DEMARRAGE ---------- //
+async function startApp() {
+  const loader = document.getElementById("loader");
+  loader.style.display = "block";
+
+  // fetch recettes et ingrédients en parallèle
+  const [recipes, _] = await Promise.all([
+    fetchRecipes(),
+    fetchIngredientMap()
+  ]);
+
+  await initMenu(); 
+
+  loader.style.display = "none";
+}
+
+
+
 startApp();
+
+document.getElementById("send-mail-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("send-mail-btn");
+
+  if (!selectedRecipes || selectedRecipes.length === 0) {
+    alert("Aucune recette sélectionnée ❌");
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = "Envoi en cours…";
+
+    await sendEmail();
+
+    btn.textContent = "Mail envoyé ✅";
+  } catch {
+    btn.textContent = "Envoyer";
+    btn.disabled = false;
+  }
+});
 

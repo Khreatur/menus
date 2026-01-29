@@ -10,18 +10,28 @@
 <body>
   <div class="app">
     <h1>Menus de la semaine</h1>
-
+    <div id="loader" style="display: none; text-align:center;">
+    <img src="/loader.gif" alt="Chargement..." />
+    </div>
     <!-- Conteneur principal -->
     <div id="menu-list"></div>
   </div>
 <!-- Pop-in ingrédients -->
 <div id="recipe-popup" class="hidden">
   <div class="popup-content">
-    <button id="popup-close">X</button>
     <h2 id="popup-title"></h2>
     <ul id="popup-ingredients"></ul>
   </div>
 </div>
+  <button id="send-mail-btn" class="send-mail-btn">
+    Envoyer
+  </button>
   <script src="app.js"></script>
+   <script
+  src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+</script>
+<script>
+  emailjs.init("442ajRLZxyEQJlOH9"); // <-- ici tu mets ta Public Key
+</script>
 </body>
 </html>
