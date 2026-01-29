@@ -1,20 +1,20 @@
 // api/recipes.js
 import fetch from "node-fetch";
 
-const NOTION_TOKEN = process.env.NOTION_TOKEN; // on met le token dans Vercel
+const NOTION_TOKEN = process.env.NOTION_TOKEN; 
 const DATABASE_ID = process.env.NOTION_DB;
 
-// Cache en mémoire (durée 5 minutes)
+
+// Cache 5 minutes
 let cache = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
 
 export default async function handler(req, res) {
   try {
     const now = Date.now();
 
     if (cache && now - cacheTimestamp < CACHE_DURATION) {
-      // Retourne le cache si encore valide
       return res.status(200).json({ results: cache });
     }
 
@@ -27,12 +27,7 @@ export default async function handler(req, res) {
           "Notion-Version": "2022-06-28",
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          page_size: 500, // Limite à 100 recettes
-          filter: {
-            or: [] // tu peux mettre un filtre si besoin
-          }
-        })
+        body: JSON.stringify({ page_size: 500 })
       }
     );
 
@@ -42,18 +37,29 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Pas de résultats Notion" });
     }
 
-    // On ne garde que ce qu'on utilise côté client
-    const lightResults = data.results.map(page => ({
-      id: page.id,
-      icon: page.icon || null,
-      properties: {
-        Nom: page.properties.Nom,
-        Categorie: page.properties.Categorie,
-        Ingredients: page.properties.Ingredients
-      }
-    }));
+    // Extraire les données essentielles
+    const lightResults = data.results.map(page => {
+      // Récupérer les ingrédients agrégés
+      const ingredientsRaw = page.properties?.Ingredient_brut?.rollup?.array || [];
 
-    // On met à jour le cache
+      const ingredients = ingredientsRaw.map(i => ({
+        id: i.id,
+        name: i.title[0]?.plain_text || "Sans nom",
+        icon: i.icon || null
+      }));
+
+      return {
+        id: page.id,
+        icon: page.icon || null,
+        properties: {
+          Nom: page.properties.Nom,
+          Categorie: page.properties.Categorie,
+          Saison: page.properties.Saison,
+          Ingredients: ingredients
+        }
+      };
+    });
+
     cache = lightResults;
     cacheTimestamp = now;
 

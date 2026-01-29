@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Menus de la semaine</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="app">
     <h1>Menus de la semaine</h1>
-    <div id="menu-list">
-      <!-- Les 7 recettes seront générées ici -->
-    </div>
-  </div>
 
-  
-  <!-- Pop-in pour les ingrédients -->
-<div id="recipe-popup" class="popup hidden">
+    <!-- Conteneur principal -->
+    <div id="menu-list"></div>
+  </div>
+<!-- Pop-in ingrédients -->
+<div id="recipe-popup" class="hidden">
   <div class="popup-content">
-    <span id="popup-close">&times;</span>
-    <h3 id="popup-title"></h3>
+    <button id="popup-close">X</button>
+    <h2 id="popup-title"></h2>
     <ul id="popup-ingredients"></ul>
   </div>
 </div>
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
