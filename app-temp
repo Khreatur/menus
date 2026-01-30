@@ -375,29 +375,16 @@ ${shoppingText}`;
 async function sendEmail() {
   try {
     const { locations, icons } = await loadIngredientLocations();
+    const recipesForMail = selectedRecipes.map(extractRecipeForEmail);
 
-    // sécuriser selectedRecipes
-    const recipesForMail = selectedRecipes
-      .filter(r => r) // éviter les null
-      .map(extractRecipeForEmail);
+    // générer HTML
+    const recipesHTML = recipesForMail.map(r => `
+      <p style="margin-bottom:12px;">
+        <strong>${r.nom}</strong><br/>
+        ${r.ingredients.join(", ")}
+      </p>
+    `).join("");
 
-    if (!recipesForMail.length) {
-      alert("Aucune recette valide pour l'envoi ❌");
-      return;
-    }
-
-    // générer HTML recettes
-    const recipesHTML = recipesForMail.map(r => {
-      const ingrText = Array.isArray(r.ingredients) ? r.ingredients.join(", ") : "";
-      return `
-        <p style="margin-bottom:12px;">
-          <strong>${r.nom}</strong><br/>
-          ${ingrText}
-        </p>
-      `;
-    }).join("");
-
-    // générer HTML liste de courses
     const shoppingHTML = buildShoppingListHTML(locations, icons, recipesForMail);
 
     const messageHTML = `
@@ -412,7 +399,7 @@ async function sendEmail() {
       </div>
     `;
 
-    // envoyer le mail
+    // envoi du mail
     await emailjs.send(
       "service_yalsbhe",
       "template_ltk6cvx",
@@ -422,11 +409,9 @@ async function sendEmail() {
       }
     );
 
-    // copier dans le presse-papier
+    // copie dans le presse-papier
     const clipboardText = buildClipboardText(locations, recipesForMail);
     await navigator.clipboard.writeText(clipboardText);
-
-    alert("Mail envoyé et texte copié dans le presse-papier ✅");
 
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
