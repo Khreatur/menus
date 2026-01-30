@@ -288,89 +288,36 @@ async function initMenu() {
   menuContainer.innerHTML = "";
   selectedRecipes = [];
   DAYS_MEALS.forEach((dm, index) => {
-    let recipe;
-    if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
-      recipe = getRandomRecipe(soups); // Dimanche soir = soupe
-      
-    } else {
-      recipe = getRandomRecipe(recipes);
-    }
-    if (!recipe) {
-  alert("Plus de recettes disponibles 😕");
-  return;
+ // 1. choisir la recette initiale
+let recipe;
+if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
+  recipe = getRandomRecipe(soups);
+} else {
+  recipe = getRandomRecipe(recipes);
 }
-    selectedRecipes[index] = [recipe];
 
+// 2. selectedRecipes = TOUJOURS un tableau
+selectedRecipes[index] = [recipe];
 
-    const div = document.createElement("div");
-    div.classList.add("menu-item");
-    div.dataset.index = index;
+// 3. créer le bloc du jour
+const div = document.createElement("div");
+div.classList.add("menu-item");
+div.dataset.index = index;
 
 div.innerHTML = `
-  <div class="day-header">
-    <span class="day">${dm.day} ${dm.meal}</span>
-  </div>
-
+  <div class="day-label">${dm.day} ${dm.meal}</div>
   <div class="recipes-container"></div>
-
-  <button class="add-recipe-btn">＋ Ajouter une recette</button>
 `;
 
-    const container = div.querySelector(".recipes-container");
-    addRecipeLine(container, recipe, index);
-    menuContainer.appendChild(div);
-    updateRecipeBlock(div, recipe);
+menuContainer.appendChild(div);
 
-    // clic sur nom ou icône ouvre la pop-in
-    div.querySelector(".name").addEventListener("click", () => showIngredients(recipe));
-    div.querySelector(".icon").addEventListener("click", () => showIngredients(recipe));
+// 4. récupérer le conteneur recettes
+const recipesContainer = div.querySelector(".recipes-container");
 
-    // bouton modifier
-div.querySelector(".modify-btn").addEventListener("click", () => {
-  const currentRecipe = selectedRecipes[index];
-
-  // 1. exclure la recette actuelle
-  if (currentRecipe?.id) {
-    excludedRecipeIds.add(currentRecipe.id);
-  }
-
-  // 2. tirer une nouvelle recette
-  let newRecipe;
-  if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
-    newRecipe = getRandomRecipe(soups);
-  } else {
-    newRecipe = getRandomRecipe(recipes);
-  }
-
-  if (!newRecipe) {
-    alert("Plus de recettes disponibles 😕");
-    return;
-  }
-
-  // 3. mettre à jour
-  selectedRecipes[index] = newRecipe;
-  updateRecipeBlock(div, newRecipe);
-  div.querySelector(".name").onclick = () => showIngredients(newRecipe);
-  div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+// 5. AFFICHER toutes les recettes du jour (clé du problème)
+selectedRecipes[index].forEach(r => {
+  addRecipeLine(recipesContainer, r, index);
 });
-
-
-div.querySelector(".add-recipe-btn").onclick = () => {
-  const available = allRecipesCache.filter(r =>
-    !excludedRecipeIds.has(r.id)
-  );
-
-  if (!available.length) {
-    alert("Plus de recettes disponibles");
-    return;
-  }
-
-  const newRecipe = getRandomRecipe(available);
-  selectedRecipes[index].push(newRecipe);
-
-  const container = div.querySelector(".recipes-container");
-  addRecipeLine(container, newRecipe, index);
-};
 
 
 
