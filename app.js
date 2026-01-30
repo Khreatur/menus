@@ -238,9 +238,6 @@ async function initMenu() {
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
     });
   });
-  console.log("Total recettes Notion :", allRecipes.length);
-console.log("Recettes après filtre saison :", recipes.length);
-console.log("Recettes SOUPE :", soups.length);
 }
 
 // ----- PREPARATION DU MAIL -------- //
@@ -280,8 +277,8 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
     r.ingredients.forEach(ing => {
       const lieu = locationsMap[ing] || "Lieu inconnu";
 
-      if (!shopping[lieu]) shopping[lieu] = {};
-      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+      if (!shopping[lieu]) shopping[lieu] = new Set();
+      shopping[lieu].add(ing);
     });
   });
 
@@ -291,17 +288,15 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 
   return sortedLieux.map(lieu => {
     const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Object.entries(shopping[lieu])
-      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+    const items = Array.from(shopping[lieu]).sort();
 
     return `
       <div style="margin-top:16px;">
         <strong>${displayLieu}</strong>
         <ul>
-          ${items.map(([ingredient, count]) => {
-            const icon = iconsMap[ingredient];
+          ${items.map(i => {
+            const icon = iconsMap[i];
             let iconHtml = "";
-
             if (icon) {
               if (icon.startsWith("http")) {
                 iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
@@ -309,10 +304,7 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
                 iconHtml = `${icon} `;
               }
             }
-
-            const suffix = count > 1 ? ` (x${count})` : "";
-
-            return `<li>${iconHtml}${ingredient}${suffix}</li>`;
+            return `<li>${iconHtml}${i}</li>`;
           }).join("")}
         </ul>
       </div>
@@ -320,43 +312,32 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
   }).join("");
 }
 
-
 function buildClipboardText(locationsMap, recipes) {
   // ---- RECETTES ----
   const recipesText = recipes.map(r => {
-  return `${r.nom}\n${r.ingredients.join(", ")}`;
+    return `${r.nom}\n${r.ingredients.map(i => `- ${i}`).join("\n")}`;
   }).join("\n\n");
-
 
   // ---- LISTE DE COURSES ----
   const shopping = {};
 
-recipes.forEach(r => {
-  r.ingredients.forEach(ing => {
-    const lieu = locationsMap[ing] || "Lieu inconnu";
-
-    if (!shopping[lieu]) shopping[lieu] = {};
-    shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+  recipes.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
+      if (!shopping[lieu]) shopping[lieu] = new Set();
+      shopping[lieu].add(ing);
+    });
   });
-});
 
   const sortedLieux = Object.keys(shopping).sort((a, b) =>
     a.localeCompare(b, 'fr', { sensitivity: 'base' })
   );
 
   const shoppingText = sortedLieux.map(lieu => {
-  const displayLieu = lieu.slice(3); // retire "1 - "
-
-  const items = Object.entries(shopping[lieu])
-    .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
-    .map(([ingredient, count]) =>
-      `- ${ingredient}${count > 1 ? ` (x${count})` : ""}`
-    )
-    .join("\n");
-
-  return `${displayLieu}\n${items}`;
-}).join("\n\n");
-
+    const displayLieu = lieu.slice(3); // retire "1 - "
+    const items = Array.from(shopping[lieu]).sort();
+    return `${displayLieu}\n${items.map(i => `- ${i}`).join("\n")}`;
+  }).join("\n\n");
 
   return `${getNextMondayLabel()}
 
@@ -371,33 +352,39 @@ ${shoppingText}`;
 
 
 
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
+
+  const textList = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3); // retire "1 - "
+    const items = Array.from(shopping[lieu]).sort();
+    return `${displayLieu}:\n${items.map(i => ` - ${i}`).join("\n")}`;
+  }).join("\n\n");
+
+  try {
+    await navigator.clipboard.writeText(textList);
+    console.log("Liste de course copiée dans le presse-papier ✅");
+  } catch (err) {
+    console.error("Impossible de copier dans le presse-papier :", err);
+  }
+}
+
+
 
 async function sendEmail() {
   try {
     const { locations, icons } = await loadIngredientLocations();
+    const recipesForMail = selectedRecipes.map(extractRecipeForEmail);
 
-    // sécuriser selectedRecipes
-    const recipesForMail = selectedRecipes
-      .filter(r => r) // éviter les null
-      .map(extractRecipeForEmail);
+    // générer HTML
+    const recipesHTML = recipesForMail.map(r => `
+      <p style="margin-bottom:12px;">
+        <strong>${r.nom}</strong><br/>
+        ${r.ingredients.join(", ")}
+      </p>
+    `).join("");
 
-    if (!recipesForMail.length) {
-      alert("Aucune recette valide pour l'envoi ❌");
-      return;
-    }
-
-    // générer HTML recettes
-    const recipesHTML = recipesForMail.map(r => {
-      const ingrText = Array.isArray(r.ingredients) ? r.ingredients.join(", ") : "";
-      return `
-        <p style="margin-bottom:12px;">
-          <strong>${r.nom}</strong><br/>
-          ${ingrText}
-        </p>
-      `;
-    }).join("");
-
-    // générer HTML liste de courses
     const shoppingHTML = buildShoppingListHTML(locations, icons, recipesForMail);
 
     const messageHTML = `
@@ -412,7 +399,7 @@ async function sendEmail() {
       </div>
     `;
 
-    // envoyer le mail
+    // envoi du mail
     await emailjs.send(
       "service_yalsbhe",
       "template_ltk6cvx",
@@ -422,11 +409,11 @@ async function sendEmail() {
       }
     );
 
-    // copier dans le presse-papier
-    const clipboardText = buildClipboardText(locations, recipesForMail);
-    await navigator.clipboard.writeText(clipboardText);
+    // copie dans le presse-papier
+   
+const clipboardText = buildClipboardText(locations, recipesForMail);
+await navigator.clipboard.writeText(clipboardText);
 
-    alert("Mail envoyé et texte copié dans le presse-papier ✅");
 
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
@@ -476,4 +463,3 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
-
