@@ -307,12 +307,37 @@ div.dataset.index = index;
 div.innerHTML = `
   <div class="day-label">${dm.day} ${dm.meal}</div>
   <div class="recipes-container"></div>
+  <button class="add-recipe-btn">+ Ajouter une recette</button>
 `;
 
 menuContainer.appendChild(div);
 
 // 4. récupérer le conteneur recettes
 const recipesContainer = div.querySelector(".recipes-container");
+const addBtn = div.querySelector(".add-recipe-btn");
+
+addBtn.onclick = () => {
+  const available = allRecipesCache.filter(r =>
+    !excludedRecipeIds.has(r.id)
+  );
+
+  if (!available.length) {
+    alert("Plus de recettes disponibles");
+    return;
+  }
+
+  const newRecipe = getRandomRecipe(available);
+
+  // exclure immédiatement pour éviter doublons
+  excludedRecipeIds.add(newRecipe.id);
+
+  // ajouter dans le modèle
+  selectedRecipes[index].push(newRecipe);
+
+  // ajouter dans l’UI
+  addRecipeLine(recipesContainer, newRecipe, index);
+};
+
 
 // 5. AFFICHER toutes les recettes du jour (clé du problème)
 selectedRecipes[index].forEach(r => {
