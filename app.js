@@ -352,25 +352,6 @@ ${shoppingText}`;
 
 
 
-  const sortedLieux = Object.keys(shopping).sort((a, b) =>
-    a.localeCompare(b, 'fr', { sensitivity: 'base' })
-  );
-
-  const textList = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Array.from(shopping[lieu]).sort();
-    return `${displayLieu}:\n${items.map(i => ` - ${i}`).join("\n")}`;
-  }).join("\n\n");
-
-  try {
-    await navigator.clipboard.writeText(textList);
-    console.log("Liste de course copiée dans le presse-papier ✅");
-  } catch (err) {
-    console.error("Impossible de copier dans le presse-papier :", err);
-  }
-}
-
-
 
 async function sendEmail() {
   try {
@@ -409,8 +390,7 @@ async function sendEmail() {
       }
     );
 
-    // copie dans le presse-papier
-   
+// copie complète dans le presse-papier (recettes + courses)
 const clipboardText = buildClipboardText(locations, recipesForMail);
 await navigator.clipboard.writeText(clipboardText);
 
