@@ -412,6 +412,7 @@ async function sendEmail() {
       }
     );
 
+
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
     alert("Erreur lors de l'envoi de l'email ❌");
