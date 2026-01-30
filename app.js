@@ -363,7 +363,24 @@ async function sendEmail() {
     const { locations, icons } = await loadIngredientLocations();
     const recipesForMail = selectedRecipes.map(extractRecipeForEmail);
 
-    // générer HTML
+    // ---- copie dans le presse-papier AVANT l'envoi ----
+    const clipboardText = buildClipboardText(locations, recipesForMail);
+    try {
+      await navigator.clipboard.writeText(clipboardText);
+      console.log("Recettes et liste copiées dans le presse-papier ✅");
+    } catch (err) {
+      console.warn("Clipboard API bloquée, fallback en cours…", err);
+      // fallback pour vieux navigateurs
+      const textArea = document.createElement("textarea");
+      textArea.value = clipboardText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      console.log("Fallback presse-papier exécuté ✅");
+    }
+
+    // ---- générer HTML ----
     const recipesHTML = recipesForMail.map(r => `
       <p style="margin-bottom:12px;">
         <strong>${r.nom}</strong><br/>
@@ -385,7 +402,7 @@ async function sendEmail() {
       </div>
     `;
 
-    // envoi du mail
+    // ---- envoi du mail ----
     await emailjs.send(
       "service_yalsbhe",
       "template_ltk6cvx",
@@ -395,16 +412,12 @@ async function sendEmail() {
       }
     );
 
-// copie complète dans le presse-papier (recettes + courses)
-const clipboardText = buildClipboardText(locations, recipesForMail);
-await navigator.clipboard.writeText(clipboardText);
-
-
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
     alert("Erreur lors de l'envoi de l'email ❌");
   }
 }
+
 
 
 
