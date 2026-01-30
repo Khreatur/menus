@@ -204,17 +204,6 @@ async function initMenu() {
     }
     selectedRecipes[index] = recipe;
 
-    prepareClipboardData();
-
-async function prepareClipboardText() {
-  const { locations } = await loadIngredientLocations();
-  const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
-  clipboardTextReady = buildClipboardText(locations, recipesForClipboard);
-}
-
-// Appelle ça après initMenu
-prepareClipboardText();
-
 
     const div = document.createElement("div");
     div.classList.add("menu-item");
@@ -250,7 +239,6 @@ prepareClipboardText();
       updateRecipeBlock(div, newRecipe);
       div.querySelector(".name").onclick = () => showIngredients(newRecipe);
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
-      prepareClipboardData();
     });
   });
   console.log("Total recettes Notion :", allRecipes.length);
@@ -452,47 +440,24 @@ async function startApp() {
 
 startApp();
 
-// variable globale
-let preparedClipboardText = "";
-
-// préparation des données (async, à appeler après initMenu et après modification)
-async function prepareClipboardData() {
-  const { locations } = await loadIngredientLocations();
-  const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
-  preparedClipboardText = buildClipboardText(locations, recipesForClipboard);
-}
-
-// --- bouton envoyer ---
-document.getElementById("send-mail-btn").addEventListener("click", () => {
+document.getElementById("send-mail-btn").addEventListener("click", async () => {
   const btn = document.getElementById("send-mail-btn");
 
-  if (!selectedRecipes.length || !preparedClipboardText) {
-    alert("Recettes non prêtes ❌");
+  if (!selectedRecipes || selectedRecipes.length === 0) {
+    alert("Aucune recette sélectionnée ❌");
     return;
   }
 
-  // --- COPIE DANS LE PRESSE-PAPIER ---
   try {
-    navigator.clipboard.writeText(preparedClipboardText);
-  } catch (err) {
-    console.error("Erreur clipboard :", err);
-  }
+    btn.disabled = true;
+    btn.textContent = "Envoi en cours…";
 
-  // --- RACCOURCI iOS ---
-  if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    openIOSShortcut();
-  }
+    await sendEmail();
 
-  // --- ENVOI DU MAIL (hors du clic immédiat) ---
-  btn.disabled = true;
-  btn.textContent = "Envoi en cours…";
-  sendEmail()
-    .then(() => {
-      btn.textContent = "Mail envoyé ✅";
-    })
-    .catch(err => {
-      console.error(err);
-      btn.textContent = "Envoyer";
-      btn.disabled = false;
-    });
+    btn.textContent = "Mail envoyé ✅";
+  } catch {
+    btn.textContent = "Envoyer";
+    btn.disabled = false;
+  }
 });
+
