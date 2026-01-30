@@ -314,9 +314,10 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 
 function buildClipboardText(locationsMap, recipes) {
   // ---- RECETTES ----
-  const recipesText = recipes.map(r => {
-    return `${r.nom}\n${r.ingredients.map(i => `- ${i}`).join("\n")}`;
-  }).join("\n\n");
+const recipesText = recipes.map(r => {
+  return `${r.nom}\n${r.ingredients.join(", ")}`;
+}).join("\n\n");
+
 
   // ---- LISTE DE COURSES ----
   const shopping = {};
