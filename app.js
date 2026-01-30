@@ -9,7 +9,7 @@ const DAYS_MEALS = [
   { day: "Vendredi", meal: "soir" },
 ];
 
-let selectedRecipes = [];
+let selectedRecipes = {}; 
 let excludedRecipeIds = new Set();
 
 // ---------- SAISON ---------- //
@@ -131,6 +131,49 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
+function getAllSelectedRecipesForMail() {
+  return Object.values(selectedRecipes)
+    .flat()
+    .map(extractRecipeForEmail);
+}
+
+
+function addRecipeLine(container, recipe, dayIndex) {
+  const line = document.createElement("div");
+  line.classList.add("recipe-line");
+
+  line.innerHTML = `
+    <span class="icon"></span>
+    <span class="name"></span>
+    <button class="modify-btn">Modifier</button>
+  `;
+
+  container.appendChild(line);
+  updateRecipeBlock(line, recipe);
+
+  // pop-in ingrédients
+  line.querySelector(".name").onclick = () => showIngredients(recipe);
+  line.querySelector(".icon").onclick = () => showIngredients(recipe);
+
+  // bouton modifier
+  line.querySelector(".modify-btn").onclick = () => {
+    excludedRecipeIds.add(recipe.id);
+
+    const newRecipe = getRandomRecipe(allRecipesCache);
+    if (!newRecipe) {
+      alert("Plus de recettes disponibles");
+      return;
+    }
+
+    const idx = selectedRecipes[dayIndex].indexOf(recipe);
+    selectedRecipes[dayIndex][idx] = newRecipe;
+
+    updateRecipeBlock(line, newRecipe);
+    recipe = newRecipe;
+  };
+}
+
+
 function buildClipboardText(locationsMap, recipesForMail) {
   // Génère le texte complet pour le presse-papier
   const recipesText = recipesForMail.map(r =>
@@ -244,24 +287,25 @@ async function initMenu() {
   alert("Plus de recettes disponibles 😕");
   return;
 }
-    selectedRecipes[index] = recipe;
+    selectedRecipes[index] = [recipe];
 
 
     const div = document.createElement("div");
     div.classList.add("menu-item");
     div.dataset.index = index;
 
-    div.innerHTML = `
-      <div class="header">
-       <div class="name-wrapper">
-        <span class="day">${dm.day} ${dm.meal}</span>
-        <span class="icon"></span>
-        <span class="name"></span>
-        </div>
-        <button class="modify-btn">Modifier</button>
-      </div>
-    `;
+div.innerHTML = `
+  <div class="day-header">
+    <span class="day">${dm.day} ${dm.meal}</span>
+  </div>
 
+  <div class="recipes-container"></div>
+
+  <button class="add-recipe-btn">＋ Ajouter une recette</button>
+`;
+
+    const container = div.querySelector(".recipes-container");
+    addRecipeLine(container, recipe, index);
     menuContainer.appendChild(div);
     updateRecipeBlock(div, recipe);
 
@@ -297,6 +341,20 @@ div.querySelector(".modify-btn").addEventListener("click", () => {
   div.querySelector(".name").onclick = () => showIngredients(newRecipe);
   div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
 });
+div.querySelector(".add-recipe-btn").onclick = () => {
+  const newRecipe = getRandomRecipe(recipes);
+
+  if (!newRecipe) {
+    alert("Plus de recettes disponibles");
+    return;
+  }
+
+  selectedRecipes[index].push(newRecipe);
+
+  const container = div.querySelector(".recipes-container");
+  addRecipeLine(container, newRecipe, index);
+};
+
 
   });
 }
@@ -422,7 +480,7 @@ async function copyShoppingListToClipboard(locationsMap, recipesForMail) {
 async function sendEmail() {
   try {
     const { locations, icons } = await loadIngredientLocations();
-    const recipesForMail = selectedRecipes.map(extractRecipeForEmail);
+    const recipesForMail = getAllSelectedRecipesForMail();
 
     // ---- copie dans le presse-papier AVANT l'envoi ----
     const clipboardText = buildClipboardText(locations, recipesForMail);

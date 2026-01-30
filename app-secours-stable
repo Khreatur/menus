@@ -10,6 +10,8 @@ const DAYS_MEALS = [
 ];
 
 let selectedRecipes = [];
+let excludedRecipeIds = new Set();
+
 // ---------- SAISON ---------- //
 function getCurrentSeason() {
   const now = new Date();
@@ -170,8 +172,15 @@ function normalize(str) {
     .trim();
 }
 function getRandomRecipe(recipes) {
-  return recipes[Math.floor(Math.random() * recipes.length)];
+  const available = recipes.filter(r => !excludedRecipeIds.has(r.id));
+
+  if (available.length === 0) {
+    return null; // plus rien de dispo
+  }
+
+  return available[Math.floor(Math.random() * available.length)];
 }
+
 
 function filterRecipesBySeason(recipes, season) {
   return recipes.filter(recipe => {
@@ -227,9 +236,14 @@ async function initMenu() {
     let recipe;
     if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
       recipe = getRandomRecipe(soups); // Dimanche soir = soupe
+      
     } else {
       recipe = getRandomRecipe(recipes);
     }
+    if (!recipe) {
+  alert("Plus de recettes disponibles 😕");
+  return;
+}
     selectedRecipes[index] = recipe;
 
 
@@ -256,18 +270,34 @@ async function initMenu() {
     div.querySelector(".icon").addEventListener("click", () => showIngredients(recipe));
 
     // bouton modifier
-    div.querySelector(".modify-btn").addEventListener("click", () => {
-      let newRecipe;
-      if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
-        newRecipe = getRandomRecipe(soups);
-      } else {
-        newRecipe = getRandomRecipe(recipes);
-      }
-      selectedRecipes[index] = newRecipe;
-      updateRecipeBlock(div, newRecipe);
-      div.querySelector(".name").onclick = () => showIngredients(newRecipe);
-      div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
-    });
+div.querySelector(".modify-btn").addEventListener("click", () => {
+  const currentRecipe = selectedRecipes[index];
+
+  // 1. exclure la recette actuelle
+  if (currentRecipe?.id) {
+    excludedRecipeIds.add(currentRecipe.id);
+  }
+
+  // 2. tirer une nouvelle recette
+  let newRecipe;
+  if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
+    newRecipe = getRandomRecipe(soups);
+  } else {
+    newRecipe = getRandomRecipe(recipes);
+  }
+
+  if (!newRecipe) {
+    alert("Plus de recettes disponibles 😕");
+    return;
+  }
+
+  // 3. mettre à jour
+  selectedRecipes[index] = newRecipe;
+  updateRecipeBlock(div, newRecipe);
+  div.querySelector(".name").onclick = () => showIngredients(newRecipe);
+  div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+});
+
   });
 }
 
