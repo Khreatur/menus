@@ -18,47 +18,60 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: cache });
     }
 
-    const notionRes = await fetch(
-      `https://api.notion.com/v1/databases/${DATABASE_ID}/query`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${NOTION_TOKEN}`,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ page_size: 500 })
-      }
-    );
+    let allResults = [];
+let cursor = undefined;
 
-    const data = await notionRes.json();
-
-    if (!data.results) {
-      return res.status(500).json({ error: "Pas de résultats Notion" });
+do {
+  const notionRes = await fetch(
+    `https://api.notion.com/v1/databases/${DATABASE_ID}/query`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${NOTION_TOKEN}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        page_size: 100,
+        start_cursor: cursor
+      })
     }
+  );
+
+  const data = await notionRes.json();
+
+  if (!data.results) {
+    throw new Error("Réponse Notion invalide");
+  }
+
+  allResults = allResults.concat(data.results);
+  cursor = data.next_cursor;
+
+} while (cursor);
+
 
     // Extraire les données essentielles
-    const lightResults = data.results.map(page => {
-      // Récupérer les ingrédients agrégés
-      const ingredientsRaw = page.properties?.Ingredient_brut?.rollup?.array || [];
+   const lightResults = allResults.map(page => {
+  const ingredientsRaw = page.properties?.Ingredient_brut?.rollup?.array || [];
 
-      const ingredients = ingredientsRaw.map(i => ({
-        id: i.id,
-        name: i.title[0]?.plain_text || "Sans nom",
-        icon: i.icon || null
-      }));
+  const ingredients = ingredientsRaw.map(i => ({
+    id: i.id,
+    name: i.title[0]?.plain_text || "Sans nom",
+    icon: i.icon || null
+  }));
 
-      return {
-        id: page.id,
-        icon: page.icon || null,
-        properties: {
-          Nom: page.properties.Nom,
-          Categorie: page.properties.Categorie,
-          Saison: page.properties.Saison,
-          Ingredients: ingredients
-        }
-      };
-    });
+  return {
+    id: page.id,
+    icon: page.icon || null,
+    properties: {
+      Nom: page.properties.Nom,
+      Categorie: page.properties.Categorie,
+      Saison: page.properties.Saison,
+      Ingredients: ingredients
+    }
+  };
+});
+
 
     cache = lightResults;
     cacheTimestamp = now;

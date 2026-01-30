@@ -129,6 +129,8 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
+
+
 function normalize(str) {
   return str
     .toLowerCase()
@@ -236,6 +238,9 @@ async function initMenu() {
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
     });
   });
+  console.log("Total recettes Notion :", allRecipes.length);
+console.log("Recettes après filtre saison :", recipes.length);
+console.log("Recettes SOUPE :", soups.length);
 }
 
 // ----- PREPARATION DU MAIL -------- //
@@ -275,8 +280,8 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
     r.ingredients.forEach(ing => {
       const lieu = locationsMap[ing] || "Lieu inconnu";
 
-      if (!shopping[lieu]) shopping[lieu] = new Set();
-      shopping[lieu].add(ing);
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
     });
   });
 
@@ -286,15 +291,17 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 
   return sortedLieux.map(lieu => {
     const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Array.from(shopping[lieu]).sort();
+    const items = Object.entries(shopping[lieu])
+      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
 
     return `
       <div style="margin-top:16px;">
         <strong>${displayLieu}</strong>
         <ul>
-          ${items.map(i => {
-            const icon = iconsMap[i];
+          ${items.map(([ingredient, count]) => {
+            const icon = iconsMap[ingredient];
             let iconHtml = "";
+
             if (icon) {
               if (icon.startsWith("http")) {
                 iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
@@ -302,7 +309,10 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
                 iconHtml = `${icon} `;
               }
             }
-            return `<li>${iconHtml}${i}</li>`;
+
+            const suffix = count > 1 ? ` (x${count})` : "";
+
+            return `<li>${iconHtml}${ingredient}${suffix}</li>`;
           }).join("")}
         </ul>
       </div>
@@ -310,35 +320,55 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
   }).join("");
 }
 
-async function copyShoppingListToClipboard(locationsMap, iconsMap, recipes) {
-  // créer une version texte simple : lieu + ingrédients
+
+function buildClipboardText(locationsMap, recipes) {
+  // ---- RECETTES ----
+  const recipesText = recipes.map(r => {
+  return `${r.nom}\n${r.ingredients.join(", ")}`;
+  }).join("\n\n");
+
+
+  // ---- LISTE DE COURSES ----
   const shopping = {};
 
-  recipes.forEach(r => {
-    r.ingredients.forEach(ing => {
-      const lieu = locationsMap[ing] || "Lieu inconnu";
-      if (!shopping[lieu]) shopping[lieu] = new Set();
-      shopping[lieu].add(ing);
-    });
+recipes.forEach(r => {
+  r.ingredients.forEach(ing => {
+    const lieu = locationsMap[ing] || "Lieu inconnu";
+
+    if (!shopping[lieu]) shopping[lieu] = {};
+    shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
   });
+});
 
   const sortedLieux = Object.keys(shopping).sort((a, b) =>
     a.localeCompare(b, 'fr', { sensitivity: 'base' })
   );
 
-  const textList = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Array.from(shopping[lieu]).sort();
-    return `${displayLieu}:\n${items.map(i => ` - ${i}`).join("\n")}`;
-  }).join("\n\n");
+  const shoppingText = sortedLieux.map(lieu => {
+  const displayLieu = lieu.slice(3); // retire "1 - "
 
-  try {
-    await navigator.clipboard.writeText(textList);
-    console.log("Liste de course copiée dans le presse-papier ✅");
-  } catch (err) {
-    console.error("Impossible de copier dans le presse-papier :", err);
-  }
+  const items = Object.entries(shopping[lieu])
+    .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+    .map(([ingredient, count]) =>
+      `- ${ingredient}${count > 1 ? ` (x${count})` : ""}`
+    )
+    .join("\n");
+
+  return `${displayLieu}\n${items}`;
+}).join("\n\n");
+
+
+  return `${getNextMondayLabel()}
+
+RECETTES
+========
+${recipesText}
+
+LISTE DE COURSES
+================
+${shoppingText}`;
 }
+
 
 
 
@@ -380,7 +410,14 @@ async function sendEmail() {
     );
 
     // copie dans le presse-papier
-    await copyShoppingListToClipboard(locations, icons, recipesForMail);
+    const clipboardText = buildClipboardText(locations, recipesForMail);
+    await navigator.clipboard.writeText(clipboardText);
+    function openIOSShortcut() {
+      const shortcutName = encodeURIComponent("Courses");
+      window.location.href = `shortcuts://run-shortcut?name=${shortcutName}`;
+    }
+    await navigator.clipboard.writeText(buildClipboardText(locations, recipes));
+    openIOSShortcut();
 
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
