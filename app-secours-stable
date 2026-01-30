@@ -129,6 +129,37 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
+function buildClipboardText(locationsMap, recipesForMail) {
+  // Génère le texte complet pour le presse-papier
+  const recipesText = recipesForMail.map(r =>
+    `${r.nom}\n${r.ingredients.join(", ")}`
+  ).join("\n\n");
+
+  const shopping = {};
+
+  recipesForMail.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+    });
+  });
+
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, "fr", { sensitivity: "base" })
+  );
+
+  const shoppingText = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3); // retire "1 - " si présent
+    const items = Object.entries(shopping[lieu])
+      .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
+      .map(([ing, count]) => `- ${ing}${count > 1 ? ` (x${count})` : ""}`)
+      .join("\n");
+    return `${displayLieu}\n${items}`;
+  }).join("\n\n");
+
+  return `${getNextMondayLabel()}\n\nRECETTES\n========\n${recipesText}\n\nLISTE DE COURSES\n================\n${shoppingText}`;
+}
 
 
 function normalize(str) {
@@ -238,9 +269,6 @@ async function initMenu() {
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
     });
   });
-  console.log("Total recettes Notion :", allRecipes.length);
-console.log("Recettes après filtre saison :", recipes.length);
-console.log("Recettes SOUPE :", soups.length);
 }
 
 // ----- PREPARATION DU MAIL -------- //
@@ -321,53 +349,42 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 }
 
 
-function buildClipboardText(locationsMap, recipes) {
-  // ---- RECETTES ----
-  const recipesText = recipes.map(r => {
-  return `${r.nom}\n${r.ingredients.join(", ")}`;
-  }).join("\n\n");
-
-
-  // ---- LISTE DE COURSES ----
+async function copyShoppingListToClipboard(locationsMap, recipesForMail) {
   const shopping = {};
 
-recipes.forEach(r => {
-  r.ingredients.forEach(ing => {
-    const lieu = locationsMap[ing] || "Lieu inconnu";
+  recipesForMail.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
 
-    if (!shopping[lieu]) shopping[lieu] = {};
-    shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+    });
   });
-});
 
   const sortedLieux = Object.keys(shopping).sort((a, b) =>
     a.localeCompare(b, 'fr', { sensitivity: 'base' })
   );
 
-  const shoppingText = sortedLieux.map(lieu => {
-  const displayLieu = lieu.slice(3); // retire "1 - "
+  const textList = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3);
+    const items = Object.entries(shopping[lieu])
+      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+      .map(([ing, count]) =>
+        ` - ${ing}${count > 1 ? ` (x${count})` : ""}`
+      )
+      .join("\n");
 
-  const items = Object.entries(shopping[lieu])
-    .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
-    .map(([ingredient, count]) =>
-      `- ${ingredient}${count > 1 ? ` (x${count})` : ""}`
-    )
-    .join("\n");
+    return `${displayLieu}:\n${items}`;
+  }).join("\n\n");
 
-  return `${displayLieu}\n${items}`;
-}).join("\n\n");
-
-
-  return `${getNextMondayLabel()}
-
-RECETTES
-========
-${recipesText}
-
-LISTE DE COURSES
-================
-${shoppingText}`;
+  try {
+    await navigator.clipboard.writeText(textList);
+    console.log("Liste de course copiée avec quantités ✅");
+  } catch (err) {
+    console.error("Erreur presse-papier :", err);
+  }
 }
+
 
 
 
@@ -377,7 +394,25 @@ async function sendEmail() {
     const { locations, icons } = await loadIngredientLocations();
     const recipesForMail = selectedRecipes.map(extractRecipeForEmail);
 
-    // générer HTML
+    // ---- copie dans le presse-papier AVANT l'envoi ----
+    const clipboardText = buildClipboardText(locations, recipesForMail);
+    await navigator.clipboard.writeText(clipboardText);
+    try {
+      await navigator.clipboard.writeText(clipboardText);
+      console.log("Recettes et liste copiées dans le presse-papier ✅");
+    } catch (err) {
+      console.warn("Clipboard API bloquée, fallback en cours…", err);
+      // fallback pour vieux navigateurs
+      const textArea = document.createElement("textarea");
+      textArea.value = clipboardText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      console.log("Fallback presse-papier exécuté ✅");
+    }
+
+    // ---- générer HTML ----
     const recipesHTML = recipesForMail.map(r => `
       <p style="margin-bottom:12px;">
         <strong>${r.nom}</strong><br/>
@@ -399,7 +434,7 @@ async function sendEmail() {
       </div>
     `;
 
-    // envoi du mail
+    // ---- envoi du mail ----
     await emailjs.send(
       "service_yalsbhe",
       "template_ltk6cvx",
@@ -409,15 +444,12 @@ async function sendEmail() {
       }
     );
 
-    // copie dans le presse-papier
-    const clipboardText = buildClipboardText(locations, recipesForMail);
-    await navigator.clipboard.writeText(clipboardText);
-
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
     alert("Erreur lors de l'envoi de l'email ❌");
   }
 }
+
 
 
 
@@ -461,4 +493,3 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
-
