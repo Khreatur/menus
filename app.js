@@ -345,10 +345,18 @@ recipes.forEach(r => {
   );
 
   const shoppingText = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Array.from(shopping[lieu]).sort();
-    return `${displayLieu}\n${items.map(i => `- ${i}`).join("\n")}`;
-  }).join("\n\n");
+  const displayLieu = lieu.slice(3); // retire "1 - "
+
+  const items = Object.entries(shopping[lieu])
+    .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+    .map(([ingredient, count]) =>
+      `- ${ingredient}${count > 1 ? ` (x${count})` : ""}`
+    )
+    .join("\n");
+
+  return `${displayLieu}\n${items}`;
+}).join("\n\n");
+
 
   return `${getNextMondayLabel()}
 
