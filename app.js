@@ -129,6 +129,37 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
+function buildClipboardText(locationsMap, recipesForMail) {
+  // Génère le texte complet pour le presse-papier
+  const recipesText = recipesForMail.map(r =>
+    `${r.nom}\n${r.ingredients.join(", ")}`
+  ).join("\n\n");
+
+  const shopping = {};
+
+  recipesForMail.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+    });
+  });
+
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, "fr", { sensitivity: "base" })
+  );
+
+  const shoppingText = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3); // retire "1 - " si présent
+    const items = Object.entries(shopping[lieu])
+      .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
+      .map(([ing, count]) => `- ${ing}${count > 1 ? ` (x${count})` : ""}`)
+      .join("\n");
+    return `${displayLieu}\n${items}`;
+  }).join("\n\n");
+
+  return `${getNextMondayLabel()}\n\nRECETTES\n========\n${recipesText}\n\nLISTE DE COURSES\n================\n${shoppingText}`;
+}
 
 
 function normalize(str) {
@@ -365,6 +396,7 @@ async function sendEmail() {
 
     // ---- copie dans le presse-papier AVANT l'envoi ----
     const clipboardText = buildClipboardText(locations, recipesForMail);
+    await navigator.clipboard.writeText(clipboardText);
     try {
       await navigator.clipboard.writeText(clipboardText);
       console.log("Recettes et liste copiées dans le presse-papier ✅");
