@@ -204,7 +204,7 @@ async function initMenu() {
     }
     selectedRecipes[index] = recipe;
 
-    let clipboardTextReady = ""; // variable globale
+    prepareClipboardData();
 
 async function prepareClipboardText() {
   const { locations } = await loadIngredientLocations();
@@ -250,7 +250,7 @@ prepareClipboardText();
       updateRecipeBlock(div, newRecipe);
       div.querySelector(".name").onclick = () => showIngredients(newRecipe);
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
-      prepareClipboardText();
+      prepareClipboardData();
     });
   });
   console.log("Total recettes Notion :", allRecipes.length);
@@ -452,40 +452,38 @@ async function startApp() {
 
 startApp();
 
-// --- variable globale pour stocker les données prêtes ---
-let preparedClipboardText = null;
+// variable globale
+let preparedClipboardText = "";
 
-// Préparer les données async AVANT le clic
+// préparation des données (async, à appeler après initMenu et après modification)
 async function prepareClipboardData() {
   const { locations } = await loadIngredientLocations();
   const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
   preparedClipboardText = buildClipboardText(locations, recipesForClipboard);
 }
 
-// Appeler cette fonction après initMenu ou quand les recettes changent
-prepareClipboardData();
-
+// --- bouton envoyer ---
 document.getElementById("send-mail-btn").addEventListener("click", () => {
   const btn = document.getElementById("send-mail-btn");
 
-  if (!selectedRecipes.length || !clipboardTextReady) {
+  if (!selectedRecipes.length || !preparedClipboardText) {
     alert("Recettes non prêtes ❌");
     return;
   }
 
-  // --- 1. COPIE DANS LE PRESSE-PAPIER (SYNCHRONE) ---
+  // --- COPIE DANS LE PRESSE-PAPIER ---
   try {
-    navigator.clipboard.writeText(clipboardTextReady);
+    navigator.clipboard.writeText(preparedClipboardText);
   } catch (err) {
     console.error("Erreur clipboard :", err);
   }
 
-  // --- 2. LANCEMENT RACCOURCI iOS (SYNCHRONE) ---
+  // --- RACCOURCI iOS ---
   if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
     openIOSShortcut();
   }
 
-  // --- 3. ENVOI DU MAIL (ASYNC, hors du clic immédiat) ---
+  // --- ENVOI DU MAIL (hors du clic immédiat) ---
   btn.disabled = true;
   btn.textContent = "Envoi en cours…";
   sendEmail()
@@ -498,4 +496,3 @@ document.getElementById("send-mail-btn").addEventListener("click", () => {
       btn.disabled = false;
     });
 });
-
