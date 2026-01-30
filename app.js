@@ -204,6 +204,17 @@ async function initMenu() {
     }
     selectedRecipes[index] = recipe;
 
+    let clipboardTextReady = ""; // variable globale
+
+async function prepareClipboardText() {
+  const { locations } = await loadIngredientLocations();
+  const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
+  clipboardTextReady = buildClipboardText(locations, recipesForClipboard);
+}
+
+// Appelle ça après initMenu
+prepareClipboardText();
+
 
     const div = document.createElement("div");
     div.classList.add("menu-item");
@@ -239,6 +250,7 @@ async function initMenu() {
       updateRecipeBlock(div, newRecipe);
       div.querySelector(".name").onclick = () => showIngredients(newRecipe);
       div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+      prepareClipboardText();
     });
   });
   console.log("Total recettes Notion :", allRecipes.length);
@@ -456,26 +468,34 @@ prepareClipboardData();
 document.getElementById("send-mail-btn").addEventListener("click", () => {
   const btn = document.getElementById("send-mail-btn");
 
-  if (!selectedRecipes || selectedRecipes.length === 0 || !preparedClipboardText) {
-    alert("Aucune recette sélectionnée ou liste non prête ❌");
+  if (!selectedRecipes.length || !clipboardTextReady) {
+    alert("Recettes non prêtes ❌");
     return;
   }
 
-  // --- 1. COPIE DANS LE PRESSE-PAPIER (SYNCHRONE iOS) ---
-  navigator.clipboard.writeText(preparedClipboardText);
+  // --- 1. COPIE DANS LE PRESSE-PAPIER (SYNCHRONE) ---
+  try {
+    navigator.clipboard.writeText(clipboardTextReady);
+  } catch (err) {
+    console.error("Erreur clipboard :", err);
+  }
 
-  // --- 2. LANCEMENT DU RACCOURCI iOS (SYNCHRONE iOS) ---
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isIOS) openIOSShortcut();
+  // --- 2. LANCEMENT RACCOURCI iOS (SYNCHRONE) ---
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    openIOSShortcut();
+  }
 
-  // --- 3. ENSUITE SEULEMENT : envoyer le mail async ---
+  // --- 3. ENVOI DU MAIL (ASYNC, hors du clic immédiat) ---
   btn.disabled = true;
   btn.textContent = "Envoi en cours…";
-  sendEmail().then(() => {
-    btn.textContent = "Mail envoyé ✅";
-  }).catch(err => {
-    console.error(err);
-    btn.textContent = "Envoyer";
-    btn.disabled = false;
-  });
+  sendEmail()
+    .then(() => {
+      btn.textContent = "Mail envoyé ✅";
+    })
+    .catch(err => {
+      console.error(err);
+      btn.textContent = "Envoyer";
+      btn.disabled = false;
+    });
 });
+
