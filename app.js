@@ -156,21 +156,32 @@ function addRecipeLine(container, recipe, dayIndex) {
   line.querySelector(".icon").onclick = () => showIngredients(recipe);
 
   // bouton modifier
-  line.querySelector(".modify-btn").onclick = () => {
-    excludedRecipeIds.add(recipe.id);
+line.querySelector(".modify-btn").onclick = () => {
+  excludedRecipeIds.add(recipe.id);
 
-    const newRecipe = getRandomRecipe(allRecipesCache);
-    if (!newRecipe) {
-      alert("Plus de recettes disponibles");
-      return;
-    }
+  const available = allRecipesCache.filter(r =>
+    !excludedRecipeIds.has(r.id)
+  );
 
-    const idx = selectedRecipes[dayIndex].indexOf(recipe);
-    selectedRecipes[dayIndex][idx] = newRecipe;
+  if (!available.length) {
+    alert("Plus de recettes disponibles");
+    return;
+  }
 
-    updateRecipeBlock(line, newRecipe);
-    recipe = newRecipe;
-  };
+  const newRecipe = getRandomRecipe(available);
+
+  const idx = selectedRecipes[dayIndex].indexOf(recipe);
+  selectedRecipes[dayIndex][idx] = newRecipe;
+
+  updateRecipeBlock(line, newRecipe);
+
+  // rebind des clics
+  line.querySelector(".name").onclick = () => showIngredients(newRecipe);
+  line.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+
+  recipe = newRecipe;
+};
+
 }
 
 
@@ -264,6 +275,7 @@ async function initMenu() {
   const allRecipes = await fetchRecipes();
   const CURRENT_SEASON = getCurrentSeason();
   const recipes = filterRecipesBySeason(allRecipes, CURRENT_SEASON);
+  allRecipesCache = recipes;
   const soups = recipes.filter(isSoup);
 
   if (!recipes.length) {
@@ -341,19 +353,25 @@ div.querySelector(".modify-btn").addEventListener("click", () => {
   div.querySelector(".name").onclick = () => showIngredients(newRecipe);
   div.querySelector(".icon").onclick = () => showIngredients(newRecipe);
 });
-div.querySelector(".add-recipe-btn").onclick = () => {
-  const newRecipe = getRandomRecipe(recipes);
 
-  if (!newRecipe) {
+
+div.querySelector(".add-recipe-btn").onclick = () => {
+  const available = allRecipesCache.filter(r =>
+    !excludedRecipeIds.has(r.id)
+  );
+
+  if (!available.length) {
     alert("Plus de recettes disponibles");
     return;
   }
 
+  const newRecipe = getRandomRecipe(available);
   selectedRecipes[index].push(newRecipe);
 
   const container = div.querySelector(".recipes-container");
   addRecipeLine(container, newRecipe, index);
 };
+
 
 
   });
