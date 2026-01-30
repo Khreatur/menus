@@ -277,8 +277,8 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
     r.ingredients.forEach(ing => {
       const lieu = locationsMap[ing] || "Lieu inconnu";
 
-      if (!shopping[lieu]) shopping[lieu] = new Set();
-      shopping[lieu].add(ing);
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
     });
   });
 
@@ -288,15 +288,17 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 
   return sortedLieux.map(lieu => {
     const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Array.from(shopping[lieu]).sort();
+    const items = Object.entries(shopping[lieu])
+      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
 
     return `
       <div style="margin-top:16px;">
         <strong>${displayLieu}</strong>
         <ul>
-          ${items.map(i => {
-            const icon = iconsMap[i];
+          ${items.map(([ingredient, count]) => {
+            const icon = iconsMap[ingredient];
             let iconHtml = "";
+
             if (icon) {
               if (icon.startsWith("http")) {
                 iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
@@ -304,7 +306,10 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
                 iconHtml = `${icon} `;
               }
             }
-            return `<li>${iconHtml}${i}</li>`;
+
+            const suffix = count > 1 ? ` (x${count})` : "";
+
+            return `<li>${iconHtml}${ingredient}${suffix}</li>`;
           }).join("")}
         </ul>
       </div>
@@ -312,21 +317,16 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
   }).join("");
 }
 
-function buildClipboardText(locationsMap, recipes) {
-  // ---- RECETTES ----
-const recipesText = recipes.map(r => {
-  return `${r.nom}\n${r.ingredients.join(", ")}`;
-}).join("\n\n");
 
-
-  // ---- LISTE DE COURSES ----
+async function copyShoppingListToClipboard(locationsMap, recipesForMail) {
   const shopping = {};
 
-  recipes.forEach(r => {
+  recipesForMail.forEach(r => {
     r.ingredients.forEach(ing => {
       const lieu = locationsMap[ing] || "Lieu inconnu";
-      if (!shopping[lieu]) shopping[lieu] = new Set();
-      shopping[lieu].add(ing);
+
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
     });
   });
 
@@ -334,22 +334,26 @@ const recipesText = recipes.map(r => {
     a.localeCompare(b, 'fr', { sensitivity: 'base' })
   );
 
-  const shoppingText = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Array.from(shopping[lieu]).sort();
-    return `${displayLieu}\n${items.map(i => `- ${i}`).join("\n")}`;
+  const textList = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3);
+    const items = Object.entries(shopping[lieu])
+      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+      .map(([ing, count]) =>
+        ` - ${ing}${count > 1 ? ` (x${count})` : ""}`
+      )
+      .join("\n");
+
+    return `${displayLieu}:\n${items}`;
   }).join("\n\n");
 
-  return `${getNextMondayLabel()}
-
-RECETTES
-========
-${recipesText}
-
-LISTE DE COURSES
-================
-${shoppingText}`;
+  try {
+    await navigator.clipboard.writeText(textList);
+    console.log("Liste de course copiée avec quantités ✅");
+  } catch (err) {
+    console.error("Erreur presse-papier :", err);
+  }
 }
+
 
 
 
