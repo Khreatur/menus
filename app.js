@@ -129,10 +129,7 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
-function openIOSShortcut() {
-  const shortcutName = encodeURIComponent("Courses");
-  window.location.href = `shortcuts://run-shortcut?name=${shortcutName}`;
-}
+
 
 function normalize(str) {
   return str
@@ -412,6 +409,9 @@ async function sendEmail() {
       }
     );
 
+    // copie dans le presse-papier
+    const clipboardText = buildClipboardText(locations, recipesForMail);
+    await navigator.clipboard.writeText(clipboardText);
 
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
