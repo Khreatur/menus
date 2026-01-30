@@ -440,41 +440,42 @@ async function startApp() {
 
 startApp();
 
-document.getElementById("send-mail-btn").addEventListener("click", async () => {
+// --- variable globale pour stocker les données prêtes ---
+let preparedClipboardText = null;
+
+// Préparer les données async AVANT le clic
+async function prepareClipboardData() {
+  const { locations } = await loadIngredientLocations();
+  const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
+  preparedClipboardText = buildClipboardText(locations, recipesForClipboard);
+}
+
+// Appeler cette fonction après initMenu ou quand les recettes changent
+prepareClipboardData();
+
+document.getElementById("send-mail-btn").addEventListener("click", () => {
   const btn = document.getElementById("send-mail-btn");
 
-  if (!selectedRecipes || selectedRecipes.length === 0) {
-    alert("Aucune recette sélectionnée ❌");
+  if (!selectedRecipes || selectedRecipes.length === 0 || !preparedClipboardText) {
+    alert("Aucune recette sélectionnée ou liste non prête ❌");
     return;
   }
 
-  try {
-    btn.disabled = true;
-    btn.textContent = "Envoi en cours…";
+  // --- 1. COPIE DANS LE PRESSE-PAPIER (SYNCHRONE iOS) ---
+  navigator.clipboard.writeText(preparedClipboardText);
 
-    // ✅ 1. Préparer les données immédiatement
-    const { locations } = await loadIngredientLocations();
-    const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
-    const clipboardText = buildClipboardText(locations, recipesForClipboard);
+  // --- 2. LANCEMENT DU RACCOURCI iOS (SYNCHRONE iOS) ---
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isIOS) openIOSShortcut();
 
-    // ✅ 2. COPIE DANS LE PRESSE-PAPIER (toujours dans le clic)
-    await navigator.clipboard.writeText(clipboardText);
-
-    // ✅ 3. LANCEMENT DU RACCOURCI iOS (toujours dans le clic)
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isIOS) {
-      openIOSShortcut();
-    }
-
-    // ⏳ 4. ENSUITE seulement : envoi du mail
-    await sendEmail();
-
+  // --- 3. ENSUITE SEULEMENT : envoyer le mail async ---
+  btn.disabled = true;
+  btn.textContent = "Envoi en cours…";
+  sendEmail().then(() => {
     btn.textContent = "Mail envoyé ✅";
-  } catch (err) {
+  }).catch(err => {
     console.error(err);
     btn.textContent = "Envoyer";
     btn.disabled = false;
-  }
+  });
 });
-
-
