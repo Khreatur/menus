@@ -412,11 +412,6 @@ async function sendEmail() {
       }
     );
 
-    // copie dans le presse-papier
-    const clipboardText = buildClipboardText(locations, recipesForMail);
-    await navigator.clipboard.writeText(clipboardText);
-    openIOSShortcut();
-
   } catch (err) {
     console.error("Erreur lors de l'envoi de l'email :", err);
     alert("Erreur lors de l'envoi de l'email ❌");
@@ -457,12 +452,29 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     btn.disabled = true;
     btn.textContent = "Envoi en cours…";
 
+    // ✅ 1. Préparer les données immédiatement
+    const { locations } = await loadIngredientLocations();
+    const recipesForClipboard = selectedRecipes.map(extractRecipeForEmail);
+    const clipboardText = buildClipboardText(locations, recipesForClipboard);
+
+    // ✅ 2. COPIE DANS LE PRESSE-PAPIER (toujours dans le clic)
+    await navigator.clipboard.writeText(clipboardText);
+
+    // ✅ 3. LANCEMENT DU RACCOURCI iOS (toujours dans le clic)
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIOS) {
+      openIOSShortcut();
+    }
+
+    // ⏳ 4. ENSUITE seulement : envoi du mail
     await sendEmail();
 
     btn.textContent = "Mail envoyé ✅";
-  } catch {
+  } catch (err) {
+    console.error(err);
     btn.textContent = "Envoyer";
     btn.disabled = false;
   }
 });
+
 
