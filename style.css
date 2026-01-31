@@ -24,7 +24,7 @@ h1 {
   text-align: center;
   font-size: 2rem;
   margin-bottom: 24px;
-  color:#16001e
+  color:#16001e;
 }
 
 /* Bloc recette */
@@ -38,7 +38,7 @@ h1 {
 .day-label {
   font-weight: 600;
   font-size: 14px;
-  color: #444;
+  color:#16001e;
   margin-bottom: 12px;
   text-transform: capitalize;
 }
@@ -167,7 +167,7 @@ h1 {
 
 .send-mail-btn {
   display: block;
-  margin: 24px auto 0;
+  margin: 0 auto 24px;
   background-color: #16001e;
   color: white;
   border: none;
@@ -219,5 +219,29 @@ h1 {
 .add-recipe-btn:active {
   background: rgba(0, 122, 255, 0.18);
   transform: scale(0.97);
+}
+
+.mic-btn {
+  margin-left: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 16px;
+  background: rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.mic-btn:active {
+  background: rgba(0,0,0,0.15);
+  transform: scale(0.95);
+}
+
+.mic-btn.listening {
+  background: #ff3b30;
+  color: white;
 }
 

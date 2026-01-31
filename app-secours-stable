@@ -16,6 +16,11 @@ let selectedRecipes = {};
 let excludedRecipeIds = new Set();
 let ingredientMap = {}; // global
 const popup = document.getElementById("recipe-popup");
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+
+const speechSupported = !!SpeechRecognition;
+
 
 const MOCK_RECIPES = [
   {
@@ -259,22 +264,77 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
+function listenOnce(onResult, onError) {
+  if (!SpeechRecognition) {
+    alert("Reconnaissance vocale non supportée");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "fr-FR";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = e => {
+    const text = e.results[0][0].transcript;
+    onResult(text);
+  };
+
+  recognition.onerror = e => {
+    onError(e);
+  };
+
+  recognition.start();
+}
 function getAllSelectedRecipesForMail() {
   return Object.values(selectedRecipes)
     .flat()
     .map(extractRecipeForEmail);
 }
-
-
 function addRecipeLine(container, recipe, dayIndex) {
+
+
   const line = document.createElement("div");
   line.classList.add("recipe-line");
 
-  line.innerHTML = `
-    <span class="icon"></span>
-    <span class="name"></span>
-    <button class="modify-btn">Modifier</button>
-  `;
+ line.innerHTML = `
+  <span class="icon"></span>
+  <span class="name"></span>
+  <button class="mic-btn">🎤</button>
+  <button class="modify-btn">Modifier</button>
+`;
+  line.querySelector(".mic-btn").onclick = () => {
+  const micBtn = line.querySelector(".mic-btn");
+  micBtn.classList.add("listening");
+
+  listenOnce(
+    spokenText => {
+      micBtn.classList.remove("listening");
+
+      const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
+
+      if (!newRecipe) {
+        alert(`Aucune recette trouvée pour "${spokenText}"`);
+        return;
+      }
+
+      const idx = selectedRecipes[dayIndex].indexOf(recipe);
+      selectedRecipes[dayIndex][idx] = newRecipe;
+
+      updateRecipeBlock(line, newRecipe);
+
+      line.querySelector(".name").onclick = () => showIngredients(newRecipe);
+      line.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+
+      recipe = newRecipe;
+    },
+    err => {
+      micBtn.classList.remove("listening");
+      alert("Erreur de reconnaissance vocale");
+      console.error(err);
+    }
+  );
+};
 
   container.appendChild(line);
   updateRecipeBlock(line, recipe);
@@ -347,6 +407,7 @@ function normalize(str) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // supprime accents
+    .replace(/[^a-z\s]/g, "")
     .trim();
 }
 function getRandomRecipe(recipes) {
@@ -387,6 +448,35 @@ function getNextMondayLabel() {
 
   return `Menus de la semaine du ${formattedDate}`;
 }
+function similarityScore(a, b) {
+  const setA = new Set(normalize(a).split(" "));
+  const setB = new Set(normalize(b).split(" "));
+
+  let score = 0;
+  setA.forEach(word => {
+    if (setB.has(word)) score++;
+  });
+
+  return score;
+}
+function findClosestRecipe(spokenText, recipes) {
+  let best = null;
+  let bestScore = 0;
+
+  recipes.forEach(r => {
+    const name = r.properties?.Nom?.title?.[0]?.plain_text;
+    if (!name) return;
+
+    const score = similarityScore(spokenText, name);
+    if (score > bestScore) {
+      bestScore = score;
+      best = r;
+    }
+  });
+
+  return bestScore > 0 ? best : null;
+}
+
 
 
 // ---------- INIT MENU ---------- //
