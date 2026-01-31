@@ -448,26 +448,40 @@ function getNextMondayLabel() {
 
   return `Menus de la semaine du ${formattedDate}`;
 }
-function similarityScore(a, b) {
-  const setA = new Set(normalize(a).split(" "));
-  const setB = new Set(normalize(b).split(" "));
+function scoreRecipe(spoken, recipeName) {
+  const spokenWords = normalize(spoken).split(" ");
+  const recipeWords = normalize(recipeName).split(" ");
 
   let score = 0;
-  setA.forEach(word => {
-    if (setB.has(word)) score++;
+
+  spokenWords.forEach(word => {
+    if (recipeWords.includes(word)) {
+      // bonus fort pour mots longs (discriminants)
+      score += word.length >= 6 ? 5 : 2;
+    }
   });
+
+  // bonus si la phrase complète est incluse
+  if (normalize(recipeName).includes(normalize(spoken))) {
+    score += 10;
+  }
+
+  // pénalité si le nom est très long
+  score -= Math.max(0, recipeWords.length - spokenWords.length);
 
   return score;
 }
+
 function findClosestRecipe(spokenText, recipes) {
   let best = null;
-  let bestScore = 0;
+  let bestScore = -Infinity;
 
   recipes.forEach(r => {
     const name = r.properties?.Nom?.title?.[0]?.plain_text;
     if (!name) return;
 
-    const score = similarityScore(spokenText, name);
+    const score = scoreRecipe(spokenText, name);
+
     if (score > bestScore) {
       bestScore = score;
       best = r;
@@ -476,6 +490,7 @@ function findClosestRecipe(spokenText, recipes) {
 
   return bestScore > 0 ? best : null;
 }
+
 
 
 
