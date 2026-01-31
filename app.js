@@ -1,3 +1,6 @@
+// DEV MODE
+const USE_MOCK_DATA = true;
+
 // ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
   { day: "Dimanche", meal: "midi" },
@@ -11,6 +14,120 @@ const DAYS_MEALS = [
 
 let selectedRecipes = {}; 
 let excludedRecipeIds = new Set();
+let ingredientMap = {}; // global
+const popup = document.getElementById("recipe-popup");
+
+const MOCK_RECIPES = [
+  {
+    id: "rec_1",
+    icon: { type: "emoji", emoji: "🍝" },
+    properties: {
+      Nom: { title: [{ plain_text: "Pâtes carbonara" }] },
+      Categorie: { multi_select: [{ name: "PLAT" }] },
+      Saison: { multi_select: [{ name: "Hiver" }, { name: "Automne" }] },
+      Ingredients: [
+        { name: "Pâtes" },
+        { name: "Lardons" },
+        { name: "Œufs" },
+        { name: "Parmesan" },
+        { name: "Poivre" }
+      ]
+    }
+  },
+
+  {
+    id: "rec_2",
+    icon: { type: "emoji", emoji: "🥗" },
+    properties: {
+      Nom: { title: [{ plain_text: "Salade césar" }] },
+      Categorie: { multi_select: [{ name: "PLAT" }] },
+      Saison: { multi_select: [{ name: "Printemps" }, { name: "Été" }] },
+      Ingredients: [
+        { name: "Salade romaine" },
+        { name: "Poulet" },
+        { name: "Parmesan" },
+        { name: "Croûtons" },
+        { name: "Sauce césar" }
+      ]
+    }
+  },
+
+  {
+    id: "rec_3",
+    icon: { type: "emoji", emoji: "🍲" },
+    properties: {
+      Nom: { title: [{ plain_text: "Soupe de légumes" }] },
+      Categorie: { multi_select: [{ name: "SOUPE" }] },
+      Saison: { multi_select: [{ name: "Hiver" }] },
+      Ingredients: [
+        { name: "Carottes" },
+        { name: "Poireaux" },
+        { name: "Pommes de terre" },
+        { name: "Oignon" }
+      ]
+    }
+  },
+
+  {
+    id: "rec_4",
+    icon: { type: "emoji", emoji: "🍛" },
+    properties: {
+      Nom: { title: [{ plain_text: "Curry de pois chiches" }] },
+      Categorie: { multi_select: [{ name: "PLAT" }] },
+      Saison: { multi_select: [{ name: "Automne" }, { name: "Hiver" }] },
+      Ingredients: [
+        { name: "Pois chiches" },
+        { name: "Lait de coco" },
+        { name: "Curry" },
+        { name: "Oignon" },
+        { name: "Riz" }
+      ]
+    }
+  },
+
+  {
+    id: "rec_5",
+    icon: { type: "emoji", emoji: "🐟" },
+    properties: {
+      Nom: { title: [{ plain_text: "Saumon au four" }] },
+      Categorie: { multi_select: [{ name: "PLAT" }] },
+      Saison: { multi_select: [{ name: "Printemps" }, { name: "Été" }] },
+      Ingredients: [
+        { name: "Saumon" },
+        { name: "Citron" },
+        { name: "Aneth" },
+        { name: "Pommes de terre" }
+      ]
+    }
+  }
+];
+const MOCK_INGREDIENTS = [
+  { name: "Pâtes", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🍝" } },
+  { name: "Lardons", lieu: "2 - Boucherie", icon: { type: "emoji", emoji: "🥓" } },
+  { name: "Œufs", lieu: "2 - Boucherie", icon: { type: "emoji", emoji: "🥚" } },
+  { name: "Parmesan", lieu: "3 - Fromagerie", icon: { type: "emoji", emoji: "🧀" } },
+  { name: "Poivre", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🧂" } },
+
+  { name: "Salade romaine", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥬" } },
+  { name: "Poulet", lieu: "2 - Boucherie", icon: { type: "emoji", emoji: "🍗" } },
+  { name: "Croûtons", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🥖" } },
+  { name: "Sauce césar", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🥣" } },
+
+  { name: "Carottes", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥕" } },
+  { name: "Poireaux", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥬" } },
+  { name: "Pommes de terre", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥔" } },
+  { name: "Oignon", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🧅" } },
+
+  { name: "Pois chiches", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🫘" } },
+  { name: "Lait de coco", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🥥" } },
+  { name: "Curry", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🍛" } },
+  { name: "Riz", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🍚" } },
+
+  { name: "Saumon", lieu: "5 - Poissonnerie", icon: { type: "emoji", emoji: "🐟" } },
+  { name: "Citron", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🍋" } },
+  { name: "Aneth", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🌿" } }
+];
+
 
 // ---------- SAISON ---------- //
 function getCurrentSeason() {
@@ -31,6 +148,8 @@ function getCurrentSeason() {
 
 // ---------- FETCH RECIPES ---------- //
 async function fetchRecipes() {
+  if (USE_MOCK_DATA) return MOCK_RECIPES;
+  else{
   try {
     const res = await fetch("/api/recipes");
     const data = await res.json();
@@ -44,11 +163,19 @@ async function fetchRecipes() {
     return [];
   }
 }
+}
 
 // ---------- FETCH INGREDIENT MAP ---------- //
-let ingredientMap = {}; // global
+
 
 async function fetchIngredientMap() {
+  if (USE_MOCK_DATA) {
+    ingredientMap = {};
+    MOCK_INGREDIENTS.forEach(i => {
+      ingredientMap[i.name] = i.icon?.emoji || null;
+    });
+    return;}
+    else{
   try {
     const res = await fetch("/api/ingredients");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -69,6 +196,7 @@ async function fetchIngredientMap() {
     console.error("Erreur fetch /ingredients :", err);
     ingredientMap = {};
   }
+}
 }
 
 // ---------- UPDATE RECIPE BLOCK ---------- //
@@ -120,7 +248,7 @@ function showIngredients(recipe) {
   document.getElementById("recipe-popup").classList.remove("hidden");
 }
 
-const popup = document.getElementById("recipe-popup");
+
 
 // fermer la pop-in au clic
 popup.onclick = () => {
@@ -136,7 +264,6 @@ function getAllSelectedRecipesForMail() {
     .flat()
     .map(extractRecipeForEmail);
 }
-
 
 function addRecipeLine(container, recipe, dayIndex) {
   const line = document.createElement("div");
@@ -183,8 +310,6 @@ line.querySelector(".modify-btn").onclick = () => {
 };
 
 }
-
-
 function buildClipboardText(locationsMap, recipesForMail) {
   // Génère le texte complet pour le presse-papier
   const recipesText = recipesForMail.map(r =>
@@ -216,8 +341,6 @@ function buildClipboardText(locationsMap, recipesForMail) {
 
   return `${getNextMondayLabel()}\n\nRECETTES\n========\n${recipesText}\n\nLISTE DE COURSES\n================\n${shoppingText}`;
 }
-
-
 function normalize(str) {
   return str
     .toLowerCase()
@@ -234,27 +357,22 @@ function getRandomRecipe(recipes) {
 
   return available[Math.floor(Math.random() * available.length)];
 }
-
-
 function filterRecipesBySeason(recipes, season) {
   return recipes.filter(recipe => {
     const seasons = recipe?.properties?.Saison?.multi_select || [];
     return seasons.some(s => s.name === season);
   });
 }
-
 function isSoup(recipe) {
   const categories = recipe?.properties?.Categorie?.multi_select || [];
   return categories.some(c => c.name === "SOUPE");
 }
-
 function extractRecipeForEmail(recipe) {
   return {
     nom: recipe?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom",
     ingredients: (recipe?.properties?.Ingredients || []).map(i => i.name)
   };
 }
-
 function getNextMondayLabel() {
   const today = new Date();
   const day = today.getDay(); // 0 = dimanche
@@ -463,10 +581,6 @@ async function copyShoppingListToClipboard(locationsMap, recipesForMail) {
   }
 }
 
-
-
-
-
 async function sendEmail() {
   try {
     const { locations, icons } = await loadIngredientLocations();
@@ -527,8 +641,6 @@ async function sendEmail() {
     alert("Erreur lors de l'envoi de l'email ❌");
   }
 }
-
-
 
 
 // ---------- DEMARRAGE ---------- //
