@@ -244,4 +244,34 @@ h1 {
   background: #ff3b30;
   color: white;
 }
+.recipe-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.recipe-line .name {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.recipe-line .actions {
+  display: flex;
+  gap: 6px;
+}
+
+.remove-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 6px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.remove-btn:hover {
+  opacity: 1;
+}
 

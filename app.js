@@ -302,6 +302,7 @@ function addRecipeLine(container, recipe, dayIndex) {
   <span class="name"></span>
   <button class="mic-btn">🎤</button>
   <button class="modify-btn">Modifier</button>
+  <button class="remove-btn" aria-label="Supprimer">❌</button>
 `;
   line.querySelector(".mic-btn").onclick = () => {
   const micBtn = line.querySelector(".mic-btn");
@@ -369,6 +370,20 @@ line.querySelector(".modify-btn").onclick = () => {
 
   recipe = newRecipe;
 };
+// bouton supprimer
+line.querySelector(".remove-btn").onclick = () => {
+  // retirer du state
+  selectedRecipes[dayIndex] = selectedRecipes[dayIndex].filter(
+    r => r.id !== recipe.id
+  );
+
+  // optionnel : rendre la recette à nouveau disponible
+  excludedRecipeIds.delete(recipe.id);
+
+  // retirer du DOM
+  line.remove();
+};
+
 
 }
 function buildClipboardText(locationsMap, recipesForMail) {
