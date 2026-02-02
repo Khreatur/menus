@@ -1,5 +1,5 @@
 // DEV MODE
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = true;
 
 // ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
@@ -132,6 +132,8 @@ const MOCK_INGREDIENTS = [
   { name: "Citron", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🍋" } },
   { name: "Aneth", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🌿" } }
 ];
+const MIC_BLACK_SRC = "mic-noir.png";
+const MIC_GREEN_SRC = "mic-vert.png";
 
 
 // ---------- SAISON ---------- //
@@ -425,21 +427,26 @@ function addRecipeLine(container, recipe, dayIndex) {
   <span class="icon-recette"></span>
   <span class="name"></span>
   <div class="recipe-actions">
-    <img src="mic.PNG" class="icon icon-mic" title="Dicter une recette" />
+    <img src="mic-noir.png" class="icon icon-mic" title="Dicter une recette" />
     <img src="change.png" class="icon icon-change" title="Modifier la recette" />
     <img src="trash.PNG" class="icon icon-trash" title="Supprimer la recette" />
     </div>
 `;
 
-  line.querySelector(".icon-mic").onclick = (e) => {
-   e.stopPropagation(); 
-  const micBtn = line.querySelector(".icon-mic");
-  micBtn.classList.add("listening");
+const micBtn = line.querySelector(".icon-mic");
+
+micBtn.onclick = (e) => {
+  e.stopPropagation();
+  micBtn.src = MIC_GREEN_SRC;
+
+  micTimeout = setTimeout(() => {
+    micBtn.src = MIC_BLACK_SRC;
+  }, 8000); // 8 secondes max
 
   listenOnce(
     spokenText => {
-      micBtn.classList.remove("listening");
-
+      clearTimeout(micTimeout);
+      micBtn.src = MIC_BLACK_SRC;
       const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
 
       if (!newRecipe) {
@@ -457,13 +464,16 @@ function addRecipeLine(container, recipe, dayIndex) {
 
       recipe = newRecipe;
     },
-    err => {
-      micBtn.classList.remove("listening");
-      alert("Erreur de reconnaissance vocale");
-      console.error(err);
+    error => {
+      clearTimeout(micTimeout);
+      micBtn.src = MIC_BLACK_SRC;
+      console.error("Erreur reconnaissance vocale", error);
+      // 👉 retour en noir même en cas d’erreur
+      micBtn.src = MIC_BLACK_SRC;
     }
   );
 };
+
 
   container.appendChild(line);
   updateRecipeBlock(line, recipe);
@@ -784,7 +794,7 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
 
   try {
     btn.disabled = true;
-    btn.textContent = "Envoi en cours…";
+    btn.textContent = "Copie en cours...";
 
     // ✅ CLIPBOARD ICI (synchronisé avec le clic)
     const recipesForMail = getAllSelectedRecipesForMail();
@@ -794,12 +804,12 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     await navigator.clipboard.writeText(clipboardText);
 
     // ensuite seulement
-    await sendEmail(false); // 👈 on enlève la copie dedans
+    //await sendEmail(false); // 👈 on enlève la copie dedans
 
-    btn.textContent = "Mail envoyé ✅";
+    btn.textContent = "Liste de course copiée ✅";
   } catch (err) {
     console.error(err);
-    btn.textContent = "Envoyer";
+    btn.textContent = "Copier la liste";
     btn.disabled = false;
   }
 });
