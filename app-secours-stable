@@ -1,5 +1,5 @@
 // DEV MODE
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = true;
 
 // ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
@@ -212,15 +212,15 @@ function updateRecipeBlock(block, recipe) {
   if (recipe.icon) {
     if (recipe.icon.type === "emoji") iconHTML = recipe.icon.emoji;
     else if (recipe.icon.type === "external")
-      iconHTML = `<img src="${recipe.icon.external.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+      iconHTML = `<img src="${recipe.icon.external.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
     else if (recipe.icon.type === "custom_emoji")
-    iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+    iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
    else if (recipe.icon.type === "file")
-    iconHTML = `<img src="${recipe.icon.file.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+    iconHTML = `<img src="${recipe.icon.file.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
    
   }
 
-  block.querySelector(".icon").innerHTML = iconHTML;
+  block.querySelector(".icon-recette").innerHTML = iconHTML;
   block.querySelector(".name").textContent = name;
 }
 
@@ -298,13 +298,17 @@ function addRecipeLine(container, recipe, dayIndex) {
   line.classList.add("recipe-line");
 
  line.innerHTML = `
-  <span class="icon"></span>
+  <span class="icon-recette"></span>
   <span class="name"></span>
-  <button class="mic-btn">🎤</button>
-  <button class="modify-btn">Modifier</button>
+  <div class="recipe-actions">
+    <img src="mic.PNG" class="icon icon-mic" title="Dicter une recette" />
+    <img src="change.png" class="icon icon-change" title="Modifier la recette" />
+    <img src="trash.PNG" class="icon icon-trash" title="Supprimer la recette" />
+    </div>
 `;
-  line.querySelector(".mic-btn").onclick = () => {
-  const micBtn = line.querySelector(".mic-btn");
+
+  line.querySelector(".icon-mic").onclick = () => {
+  const micBtn = line.querySelector(".icon-mic");
   micBtn.classList.add("listening");
 
   listenOnce(
@@ -324,7 +328,7 @@ function addRecipeLine(container, recipe, dayIndex) {
       updateRecipeBlock(line, newRecipe);
 
       line.querySelector(".name").onclick = () => showIngredients(newRecipe);
-      line.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+      line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
 
       recipe = newRecipe;
     },
@@ -344,7 +348,7 @@ function addRecipeLine(container, recipe, dayIndex) {
   line.querySelector(".icon").onclick = () => showIngredients(recipe);
 
   // bouton modifier
-line.querySelector(".modify-btn").onclick = () => {
+line.querySelector(".icon-change").onclick = () => {
   excludedRecipeIds.add(recipe.id);
 
   const available = allRecipesCache.filter(r =>
@@ -365,10 +369,24 @@ line.querySelector(".modify-btn").onclick = () => {
 
   // rebind des clics
   line.querySelector(".name").onclick = () => showIngredients(newRecipe);
-  line.querySelector(".icon").onclick = () => showIngredients(newRecipe);
+  line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
 
   recipe = newRecipe;
 };
+// bouton supprimer
+line.querySelector(".icon-trash").onclick = () => {
+  // retirer du state
+  selectedRecipes[dayIndex] = selectedRecipes[dayIndex].filter(
+    r => r.id !== recipe.id
+  );
+
+  // optionnel : rendre la recette à nouveau disponible
+  excludedRecipeIds.delete(recipe.id);
+
+  // retirer du DOM
+  line.remove();
+};
+
 
 }
 function buildClipboardText(locationsMap, recipesForMail) {
@@ -531,7 +549,7 @@ div.dataset.index = index;
 div.innerHTML = `
   <div class="day-label">${dm.day} ${dm.meal}</div>
   <div class="recipes-container"></div>
-  <button class="add-recipe-btn">+ Ajouter une recette</button>
+  <button class="add-recipe-btn">+ Ajouter un item</button>
 `;
 
 menuContainer.appendChild(div);
@@ -634,7 +652,7 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 
             if (icon) {
               if (icon.startsWith("http")) {
-                iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
+                iconHtml = `<img src="${icon}" alt="" style="width:22px;margin-right:6px;vertical-align:middle;">`;
               } else {
                 iconHtml = `${icon} `;
               }

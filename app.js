@@ -709,25 +709,6 @@ async function sendEmail() {
   try {
     const { locations, icons } = await loadIngredientLocations();
     const recipesForMail = getAllSelectedRecipesForMail();
-
-    // ---- copie dans le presse-papier AVANT l'envoi ----
-    const clipboardText = buildClipboardText(locations, recipesForMail);
-    await navigator.clipboard.writeText(clipboardText);
-    try {
-      await navigator.clipboard.writeText(clipboardText);
-      console.log("Recettes et liste copiées dans le presse-papier ✅");
-    } catch (err) {
-      console.warn("Clipboard API bloquée, fallback en cours…", err);
-      // fallback pour vieux navigateurs
-      const textArea = document.createElement("textarea");
-      textArea.value = clipboardText;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
-      console.log("Fallback presse-papier exécuté ✅");
-    }
-
     // ---- générer HTML ----
     const recipesHTML = recipesForMail.map(r => `
       <p style="margin-bottom:12px;">
@@ -799,11 +780,21 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     btn.disabled = true;
     btn.textContent = "Envoi en cours…";
 
-    await sendEmail();
+    // ✅ CLIPBOARD ICI (synchronisé avec le clic)
+    const recipesForMail = getAllSelectedRecipesForMail();
+    const { locations } = await loadIngredientLocations();
+    const clipboardText = buildClipboardText(locations, recipesForMail);
+
+    await navigator.clipboard.writeText(clipboardText);
+
+    // ensuite seulement
+    await sendEmail(false); // 👈 on enlève la copie dedans
 
     btn.textContent = "Mail envoyé ✅";
-  } catch {
+  } catch (err) {
+    console.error(err);
     btn.textContent = "Envoyer";
     btn.disabled = false;
   }
 });
+
