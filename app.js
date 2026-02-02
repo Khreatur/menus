@@ -1,5 +1,5 @@
 // DEV MODE
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
