@@ -291,104 +291,7 @@ function getAllSelectedRecipesForMail() {
     .flat()
     .map(extractRecipeForEmail);
 }
-function addRecipeLine(container, recipe, dayIndex) {
 
-
-  const line = document.createElement("div");
-  line.classList.add("recipe-line");
-
- line.innerHTML = `
-  <span class="icon-recette"></span>
-  <span class="name"></span>
-  <div class="recipe-actions">
-    <img src="mic.PNG" class="icon icon-mic" title="Dicter une recette" />
-    <img src="change.png" class="icon icon-change" title="Modifier la recette" />
-    <img src="trash.PNG" class="icon icon-trash" title="Supprimer la recette" />
-    </div>
-`;
-
-  line.querySelector(".icon-mic").onclick = () => {
-  const micBtn = line.querySelector(".icon-mic");
-  micBtn.classList.add("listening");
-
-  listenOnce(
-    spokenText => {
-      micBtn.classList.remove("listening");
-
-      const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
-
-      if (!newRecipe) {
-        alert(`Aucune recette trouvée pour "${spokenText}"`);
-        return;
-      }
-
-      const idx = selectedRecipes[dayIndex].indexOf(recipe);
-      selectedRecipes[dayIndex][idx] = newRecipe;
-
-      updateRecipeBlock(line, newRecipe);
-
-      line.querySelector(".name").onclick = () => showIngredients(newRecipe);
-      line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
-
-      recipe = newRecipe;
-    },
-    err => {
-      micBtn.classList.remove("listening");
-      alert("Erreur de reconnaissance vocale");
-      console.error(err);
-    }
-  );
-};
-
-  container.appendChild(line);
-  updateRecipeBlock(line, recipe);
-
-  // pop-in ingrédients
-  line.querySelector(".name").onclick = () => showIngredients(recipe);
-  line.querySelector(".icon").onclick = () => showIngredients(recipe);
-
-  // bouton modifier
-line.querySelector(".icon-change").onclick = () => {
-  excludedRecipeIds.add(recipe.id);
-
-  const available = allRecipesCache.filter(r =>
-    !excludedRecipeIds.has(r.id)
-  );
-
-  if (!available.length) {
-    alert("Plus de recettes disponibles");
-    return;
-  }
-
-  const newRecipe = getRandomRecipe(available);
-
-  const idx = selectedRecipes[dayIndex].indexOf(recipe);
-  selectedRecipes[dayIndex][idx] = newRecipe;
-
-  updateRecipeBlock(line, newRecipe);
-
-  // rebind des clics
-  line.querySelector(".name").onclick = () => showIngredients(newRecipe);
-  line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
-
-  recipe = newRecipe;
-};
-// bouton supprimer
-line.querySelector(".icon-trash").onclick = () => {
-  // retirer du state
-  selectedRecipes[dayIndex] = selectedRecipes[dayIndex].filter(
-    r => r.id !== recipe.id
-  );
-
-  // optionnel : rendre la recette à nouveau disponible
-  excludedRecipeIds.delete(recipe.id);
-
-  // retirer du DOM
-  line.remove();
-};
-
-
-}
 function buildClipboardText(locationsMap, recipesForMail) {
   // Génère le texte complet pour le presse-papier
   const recipesText = recipesForMail.map(r =>
@@ -510,7 +413,110 @@ function findClosestRecipe(spokenText, recipes) {
 }
 
 
+// ---------- AJOUTER RECETTES --------- //
 
+function addRecipeLine(container, recipe, dayIndex) {
+
+
+  const line = document.createElement("div");
+  line.classList.add("recipe-line");
+
+ line.innerHTML = `
+  <span class="icon-recette"></span>
+  <span class="name"></span>
+  <div class="recipe-actions">
+    <img src="mic.PNG" class="icon icon-mic" title="Dicter une recette" />
+    <img src="change.png" class="icon icon-change" title="Modifier la recette" />
+    <img src="trash.PNG" class="icon icon-trash" title="Supprimer la recette" />
+    </div>
+`;
+
+  line.querySelector(".icon-mic").onclick = (e) => {
+   e.stopPropagation(); 
+  const micBtn = line.querySelector(".icon-mic");
+  micBtn.classList.add("listening");
+
+  listenOnce(
+    spokenText => {
+      micBtn.classList.remove("listening");
+
+      const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
+
+      if (!newRecipe) {
+        alert(`Aucune recette trouvée pour "${spokenText}"`);
+        return;
+      }
+
+      const idx = selectedRecipes[dayIndex].indexOf(recipe);
+      selectedRecipes[dayIndex][idx] = newRecipe;
+
+      updateRecipeBlock(line, newRecipe);
+
+      line.querySelector(".name").onclick = () => showIngredients(newRecipe);
+      line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
+
+      recipe = newRecipe;
+    },
+    err => {
+      micBtn.classList.remove("listening");
+      alert("Erreur de reconnaissance vocale");
+      console.error(err);
+    }
+  );
+};
+
+  container.appendChild(line);
+  updateRecipeBlock(line, recipe);
+
+  // pop-in ingrédients
+  line.querySelector(".name").onclick = () => showIngredients(recipe);
+  line.querySelector(".icon-recette").onclick = () => showIngredients(recipe);
+
+
+  // bouton modifier
+line.querySelector(".icon-change").onclick = (e) => {
+  e.stopPropagation();
+  excludedRecipeIds.add(recipe.id);
+
+  const available = allRecipesCache.filter(r =>
+    !excludedRecipeIds.has(r.id)
+  );
+
+  if (!available.length) {
+    alert("Plus de recettes disponibles");
+    return;
+  }
+
+  const newRecipe = getRandomRecipe(available);
+
+  const idx = selectedRecipes[dayIndex].indexOf(recipe);
+  selectedRecipes[dayIndex][idx] = newRecipe;
+
+  updateRecipeBlock(line, newRecipe);
+
+  // rebind des clics
+  line.querySelector(".name").onclick = () => showIngredients(newRecipe);
+  line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
+
+  recipe = newRecipe;
+};
+// bouton supprimer
+line.querySelector(".icon-trash").onclick = (e) => {
+  e.stopPropagation();
+  // retirer du state
+  selectedRecipes[dayIndex] = selectedRecipes[dayIndex].filter(
+    r => r.id !== recipe.id
+  );
+
+  // optionnel : rendre la recette à nouveau disponible
+  excludedRecipeIds.delete(recipe.id);
+
+  // retirer du DOM
+  line.remove();
+};
+
+
+}
 
 // ---------- INIT MENU ---------- //
 async function initMenu() {
