@@ -212,11 +212,11 @@ function updateRecipeBlock(block, recipe) {
   if (recipe.icon) {
     if (recipe.icon.type === "emoji") iconHTML = recipe.icon.emoji;
     else if (recipe.icon.type === "external")
-      iconHTML = `<img src="${recipe.icon.external.url}" style="width:40px;margin-right:6px;vertical-align:middle;">`;
+      iconHTML = `<img src="${recipe.icon.external.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
     else if (recipe.icon.type === "custom_emoji")
-    iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:40px;margin-right:6px;vertical-align:middle;">`;
+    iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
    else if (recipe.icon.type === "file")
-    iconHTML = `<img src="${recipe.icon.file.url}" style="width:40px;margin-right:6px;vertical-align:middle;">`;
+    iconHTML = `<img src="${recipe.icon.file.url}" style="width:20px;margin-right:6px;vertical-align:middle;">`;
    
   }
 
@@ -652,7 +652,7 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 
             if (icon) {
               if (icon.startsWith("http")) {
-                iconHtml = `<img src="${icon}" alt="" style="width:40px;margin-right:6px;vertical-align:middle;">`;
+                iconHtml = `<img src="${icon}" alt="" style="width:20px;margin-right:6px;vertical-align:middle;">`;
               } else {
                 iconHtml = `${icon} `;
               }
