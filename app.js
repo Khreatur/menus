@@ -1,5 +1,5 @@
 // DEV MODE
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
@@ -134,6 +134,7 @@ const MOCK_INGREDIENTS = [
 ];
 const MIC_BLACK_SRC = "mic-noir.png";
 const MIC_GREEN_SRC = "mic-vert.png";
+
 
 
 // ---------- SAISON ---------- //
@@ -294,11 +295,20 @@ function getAllSelectedRecipesForMail() {
     .map(extractRecipeForEmail);
 }
 
-function buildClipboardText(locationsMap, recipesForMail) {
-  // Génère le texte complet pour le presse-papier
-  const recipesText = recipesForMail.map(r =>
-    `${r.nom}\n${r.ingredients.join(", ")}`
-  ).join("\n\n");
+function buildClipboardHTML(locationsMap, recipesForMail) {
+  const recipesHTML = recipesForMail.map((r, index) => {
+    const slot = DAYS_MEALS[index];
+    const label = slot ? `${slot.day} ${slot.meal}` : "Jour inconnu";
+
+    return `
+      <p>
+        <strong>${label} : ${r.nom}</strong><br>
+        <span style="font-weight: normal;">
+          ${r.ingredients.join(", ")}
+        </span>
+      </p>
+    `;
+  }).join("");
 
   const shopping = {};
 
@@ -314,17 +324,51 @@ function buildClipboardText(locationsMap, recipesForMail) {
     a.localeCompare(b, "fr", { sensitivity: "base" })
   );
 
-  const shoppingText = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3); // retire "1 - " si présent
+  const shoppingHTML = sortedLieux.map(lieu => {
+    const displayLieu = lieu.slice(3);
     const items = Object.entries(shopping[lieu])
       .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
-      .map(([ing, count]) => `- ${ing}${count > 1 ? ` (x${count})` : ""}`)
-      .join("\n");
-    return `${displayLieu}\n${items}`;
-  }).join("\n\n");
+      .map(([ing, count]) =>
+        `- ${ing}${count > 1 ? ` (x${count})` : ""}`
+      )
+      .join("<br>");
 
-  return `${getNextMondayLabel()}\n\nRECETTES\n========\n${recipesText}\n\nLISTE DE COURSES\n================\n${shoppingText}`;
+    return `
+      <p>
+        <strong>${displayLieu}</strong><br>
+        <span style="font-weight: normal;">
+          ${items}
+        </span>
+      </p>
+    `;
+  }).join("");
+
+  return `
+    <h3>${getNextMondayLabel()}</h3>
+    <br>
+    <h4>RECETTES</h4>
+    <br>
+    ${recipesHTML}
+    <br>
+    <h4>LISTE DE COURSES</h4>
+    <br>
+    ${shoppingHTML}
+  `;
 }
+
+
+
+
+async function copyToClipboardHTML(html, fallbackText) {
+  const item = new ClipboardItem({
+    "text/html": new Blob([html], { type: "text/html" }),
+    "text/plain": new Blob([fallbackText], { type: "text/plain" }) // sécurité
+  });
+
+  await navigator.clipboard.write([item]);
+}
+
+
 function normalize(str) {
   return str
     .toLowerCase()
@@ -438,9 +482,11 @@ const micBtn = line.querySelector(".icon-mic");
 micBtn.onclick = (e) => {
   e.stopPropagation();
   micBtn.src = MIC_GREEN_SRC;
+  micBtn.classList.add("listening");
 
   micTimeout = setTimeout(() => {
     micBtn.src = MIC_BLACK_SRC;
+    micBtn.classList.remove("listening");
   }, 8000); // 8 secondes max
 
   listenOnce(
@@ -467,9 +513,11 @@ micBtn.onclick = (e) => {
     error => {
       clearTimeout(micTimeout);
       micBtn.src = MIC_BLACK_SRC;
+      micBtn.classList.remove("listening");
       console.error("Erreur reconnaissance vocale", error);
       // 👉 retour en noir même en cas d’erreur
       micBtn.src = MIC_BLACK_SRC;
+      micBtn.classList.remove("listening");
     }
   );
 };
@@ -685,42 +733,6 @@ function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
 }
 
 
-async function copyShoppingListToClipboard(locationsMap, recipesForMail) {
-  const shopping = {};
-
-  recipesForMail.forEach(r => {
-    r.ingredients.forEach(ing => {
-      const lieu = locationsMap[ing] || "Lieu inconnu";
-
-      if (!shopping[lieu]) shopping[lieu] = {};
-      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
-    });
-  });
-
-  const sortedLieux = Object.keys(shopping).sort((a, b) =>
-    a.localeCompare(b, 'fr', { sensitivity: 'base' })
-  );
-
-  const textList = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3);
-    const items = Object.entries(shopping[lieu])
-      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
-      .map(([ing, count]) =>
-        ` - ${ing}${count > 1 ? ` (x${count})` : ""}`
-      )
-      .join("\n");
-
-    return `${displayLieu}:\n${items}`;
-  }).join("\n\n");
-
-  try {
-    await navigator.clipboard.writeText(textList);
-    console.log("Liste de course copiée avec quantités ✅");
-  } catch (err) {
-    console.error("Erreur presse-papier :", err);
-  }
-}
-
 async function sendEmail() {
   try {
     const { locations, icons } = await loadIngredientLocations();
@@ -799,9 +811,11 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     // ✅ CLIPBOARD ICI (synchronisé avec le clic)
     const recipesForMail = getAllSelectedRecipesForMail();
     const { locations } = await loadIngredientLocations();
-    const clipboardText = buildClipboardText(locations, recipesForMail);
+    const clipboardText = buildClipboardHTML(locations, recipesForMail);
+const clipboardHTML = buildClipboardHTML(locations, recipesForMail);
 
-    await navigator.clipboard.writeText(clipboardText);
+await copyToClipboardHTML(clipboardHTML, clipboardText);
+
 
     // ensuite seulement
     //await sendEmail(false); // 👈 on enlève la copie dedans
