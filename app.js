@@ -1,5 +1,6 @@
+document.addEventListener("DOMContentLoaded", () => {
 // DEV MODE
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = true;
 
 // ---------- CONSTANTES ---------- //
 const DAYS_MEALS = [
@@ -256,8 +257,6 @@ function showIngredients(recipe) {
   document.getElementById("recipe-popup").classList.remove("hidden");
 }
 
-
-
 // fermer la pop-in au clic
 popup.onclick = () => {
   popup.classList.add("hidden");
@@ -355,8 +354,6 @@ function buildClipboardHTML(locationsMap, recipesForMail) {
     ${shoppingHTML}
   `;
 }
-
-
 
 
 async function copyToClipboardHTML(html, fallbackText) {
@@ -457,6 +454,12 @@ function findClosestRecipe(spokenText, recipes) {
 
   return bestScore > 0 ? best : null;
 }
+function stopMic(micBtn, micTimeout) {
+  if (micTimeout) clearTimeout(micTimeout);
+  micBtn.src = MIC_BLACK_SRC;
+  micBtn.classList.remove("listening");
+}
+
 
 
 // ---------- AJOUTER RECETTES --------- //
@@ -484,15 +487,14 @@ micBtn.onclick = (e) => {
   micBtn.src = MIC_GREEN_SRC;
   micBtn.classList.add("listening");
 
-  micTimeout = setTimeout(() => {
-    micBtn.src = MIC_BLACK_SRC;
-    micBtn.classList.remove("listening");
-  }, 8000); // 8 secondes max
+ micTimeout = setTimeout(() => {
+  stopMic(micBtn, micTimeout);
+}, 8000);
 
   listenOnce(
     spokenText => {
-      clearTimeout(micTimeout);
-      micBtn.src = MIC_BLACK_SRC;
+      stopMic(micBtn, micTimeout);
+
       const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
 
       if (!newRecipe) {
@@ -511,9 +513,8 @@ micBtn.onclick = (e) => {
       recipe = newRecipe;
     },
     error => {
-      clearTimeout(micTimeout);
-      micBtn.src = MIC_BLACK_SRC;
-      micBtn.classList.remove("listening");
+ stopMic(micBtn, micTimeout);
+
       console.error("Erreur reconnaissance vocale", error);
       // 👉 retour en noir même en cas d’erreur
       micBtn.src = MIC_BLACK_SRC;
@@ -536,9 +537,19 @@ line.querySelector(".icon-change").onclick = (e) => {
   e.stopPropagation();
   excludedRecipeIds.add(recipe.id);
 
-  const available = allRecipesCache.filter(r =>
-    !excludedRecipeIds.has(r.id)
-  );
+const isSundaySoup =
+  DAYS_MEALS[dayIndex].day === "Dimanche" &&
+  DAYS_MEALS[dayIndex].meal === "soir" &&
+  getCurrentSeason() === "Hiver";
+
+const source = isSundaySoup
+  ? allRecipesCache.filter(isSoup)
+  : allRecipesCache;
+
+const available = source.filter(r =>
+  !excludedRecipeIds.has(r.id)
+);
+
 
   if (!available.length) {
     alert("Plus de recettes disponibles");
@@ -578,6 +589,12 @@ line.querySelector(".icon-trash").onclick = (e) => {
 
 // ---------- INIT MENU ---------- //
 async function initMenu() {
+  const menuContainer = document.getElementById("menu-list");
+  if (!menuContainer) {
+    console.error("menu-list introuvable ! Impossible d'afficher le menu.");
+    return;
+  }
+
   const allRecipes = await fetchRecipes();
   const CURRENT_SEASON = getCurrentSeason();
   const recipes = filterRecipesBySeason(allRecipes, CURRENT_SEASON);
@@ -585,73 +602,77 @@ async function initMenu() {
   const soups = recipes.filter(isSoup);
 
   if (!recipes.length) {
-    document.getElementById("menu-list").textContent =
-      `Aucune recette pour la saison : ${CURRENT_SEASON}`;
+    menuContainer.textContent = `Aucune recette pour la saison : ${CURRENT_SEASON}`;
     return;
   }
 
-  const menuContainer = document.getElementById("menu-list");
   menuContainer.innerHTML = "";
   selectedRecipes = [];
+
   DAYS_MEALS.forEach((dm, index) => {
- // 1. choisir la recette initiale
-let recipe;
-if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
-  recipe = getRandomRecipe(soups);
-} else {
-  recipe = getRandomRecipe(recipes);
-}
+    // 1. choisir la recette initiale
+    let recipe;
+    if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
+      recipe = getRandomRecipe(soups);
+    } else {
+      recipe = getRandomRecipe(recipes);
+    }
 
-// 2. selectedRecipes = TOUJOURS un tableau
-selectedRecipes[index] = [recipe];
+    // 2. selectedRecipes = TOUJOURS un tableau
+    selectedRecipes[index] = [recipe];
 
-// 3. créer le bloc du jour
-const div = document.createElement("div");
-div.classList.add("menu-item");
-div.dataset.index = index;
+    // 3. créer le bloc du jour
+    const div = document.createElement("div");
+    div.classList.add("menu-item");
+    div.dataset.index = index;
 
-div.innerHTML = `
-  <div class="day-label">${dm.day} ${dm.meal}</div>
-  <div class="recipes-container"></div>
-  <button class="add-recipe-btn">+ Ajouter un item</button>
-`;
+    div.innerHTML = `
+      <div class="day-label">${dm.day} ${dm.meal}</div>
+      <div class="recipes-container"></div>
+      <button class="add-recipe-btn">+ Ajouter un item</button>
+    `;
 
-menuContainer.appendChild(div);
+    menuContainer.appendChild(div);
 
-// 4. récupérer le conteneur recettes
-const recipesContainer = div.querySelector(".recipes-container");
-const addBtn = div.querySelector(".add-recipe-btn");
+    // 4. récupérer le conteneur recettes et bouton ajouter
+    const recipesContainer = div.querySelector(".recipes-container");
+    const addBtn = div.querySelector(".add-recipe-btn");
 
-addBtn.onclick = () => {
-  const available = allRecipesCache.filter(r =>
-    !excludedRecipeIds.has(r.id)
-  );
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const isSundaySoup =
+          DAYS_MEALS[index].day === "Dimanche" &&
+          DAYS_MEALS[index].meal === "soir" &&
+          getCurrentSeason() === "Hiver";
 
-  if (!available.length) {
-    alert("Plus de recettes disponibles");
-    return;
-  }
+        const source = isSundaySoup
+          ? allRecipesCache.filter(isSoup)
+          : allRecipesCache;
 
-  const newRecipe = getRandomRecipe(available);
+        const available = source.filter(r => !excludedRecipeIds.has(r.id));
 
-  // exclure immédiatement pour éviter doublons
-  excludedRecipeIds.add(newRecipe.id);
+        if (!available.length) {
+          alert("Plus de recettes disponibles");
+          return;
+        }
 
-  // ajouter dans le modèle
-  selectedRecipes[index].push(newRecipe);
+        const newRecipe = getRandomRecipe(available);
 
-  // ajouter dans l’UI
-  addRecipeLine(recipesContainer, newRecipe, index);
-};
+        // exclure immédiatement pour éviter doublons
+        excludedRecipeIds.add(newRecipe.id);
 
+        // ajouter dans le modèle
+        selectedRecipes[index].push(newRecipe);
 
-// 5. AFFICHER toutes les recettes du jour (clé du problème)
-selectedRecipes[index].forEach(r => {
-  addRecipeLine(recipesContainer, r, index);
-});
+        // ajouter dans l’UI
+        addRecipeLine(recipesContainer, newRecipe, index);
+      };
+    }
 
-
-
+    // 5. AFFICHER toutes les recettes du jour
+    selectedRecipes[index].forEach(r => {
+      addRecipeLine(recipesContainer, r, index);
+    });
   });
 }
 
@@ -685,116 +706,37 @@ async function loadIngredientLocations() {
   }
 }
 
-function buildShoppingListHTML(locationsMap, iconsMap, recipes) {
-  const shopping = {};
-
-  recipes.forEach(r => {
-    r.ingredients.forEach(ing => {
-      const lieu = locationsMap[ing] || "Lieu inconnu";
-
-      if (!shopping[lieu]) shopping[lieu] = {};
-      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
-    });
-  });
-
-  const sortedLieux = Object.keys(shopping).sort((a, b) =>
-    a.localeCompare(b, 'fr', { sensitivity: 'base' })
-  );
-
-  return sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3); // retire "1 - "
-    const items = Object.entries(shopping[lieu])
-      .sort(([a], [b]) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
-
-    return `
-      <div style="margin-top:16px;">
-        <strong>${displayLieu}</strong>
-        <ul>
-          ${items.map(([ingredient, count]) => {
-            const icon = iconsMap[ingredient];
-            let iconHtml = "";
-
-            if (icon) {
-              if (icon.startsWith("http")) {
-                iconHtml = `<img src="${icon}" alt="" style="width:22px;margin-right:6px;vertical-align:middle;">`;
-              } else {
-                iconHtml = `${icon} `;
-              }
-            }
-
-            const suffix = count > 1 ? ` (x${count})` : "";
-
-            return `<li>${iconHtml}${ingredient}${suffix}</li>`;
-          }).join("")}
-        </ul>
-      </div>
-    `;
-  }).join("");
-}
 
 
-async function sendEmail() {
+
+// ---------- DEMARRAGE ---------- //
+
+  
+
+async function startApp() {
+  const loader = document.getElementById("loader");
+  if (loader) loader.style.display = "block";
+
   try {
-    const { locations, icons } = await loadIngredientLocations();
-    const recipesForMail = getAllSelectedRecipesForMail();
-    // ---- générer HTML ----
-    const recipesHTML = recipesForMail.map(r => `
-      <p style="margin-bottom:12px;">
-        <strong>${r.nom}</strong><br/>
-        ${r.ingredients.join(", ")}
-      </p>
-    `).join("");
+    // fetch recettes et ingrédients en parallèle
+    const [recipes, _] = await Promise.all([
+      fetchRecipes(),
+      fetchIngredientMap()
+    ]);
 
-    const shoppingHTML = buildShoppingListHTML(locations, icons, recipesForMail);
-
-    const messageHTML = `
-      <div style="font-family: Arial, sans-serif; line-height:1.4;">
-        <h2>Recettes sélectionnées</h2>
-        ${recipesHTML}
-
-        <hr style="margin:24px 0;" />
-
-        <h2>Liste de courses</h2>
-        ${shoppingHTML}
-      </div>
-    `;
-
-    // ---- envoi du mail ----
-    await emailjs.send(
-      "service_yalsbhe",
-      "template_ltk6cvx",
-      {
-        title: getNextMondayLabel(),
-        message_html: messageHTML
-      }
-    );
+    await initMenu(); 
 
   } catch (err) {
-    console.error("Erreur lors de l'envoi de l'email :", err);
-    alert("Erreur lors de l'envoi de l'email ❌");
+    console.error("Erreur au démarrage de l'app :", err);
+  } finally {
+    if (loader) loader.style.display = "none";
   }
 }
 
 
-// ---------- DEMARRAGE ---------- //
-async function startApp() {
-  const loader = document.getElementById("loader");
-  loader.style.display = "block";
-
-  // fetch recettes et ingrédients en parallèle
-  const [recipes, _] = await Promise.all([
-    fetchRecipes(),
-    fetchIngredientMap()
-  ]);
-
-  await initMenu(); 
-
-  loader.style.display = "none";
-}
 
 
 
-startApp();
 
 document.getElementById("send-mail-btn").addEventListener("click", async () => {
   const btn = document.getElementById("send-mail-btn");
@@ -826,5 +768,9 @@ await copyToClipboardHTML(clipboardHTML, clipboardText);
     btn.textContent = "Copier la liste";
     btn.disabled = false;
   }
+});
+
+  startApp();
+
 });
 

@@ -5,6 +5,7 @@
   <title>Menus de la semaine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
+  <script src="app.js"></script>
 </head>
 
 <body>
@@ -24,14 +25,15 @@
   </div>
 </div>
   <button id="send-mail-btn" class="send-mail-btn">
-    Copier la liste
+    Envoyer les menus par mail
   </button>
-  <script src="app.js"></script>
+  
    <script
   src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
 </script>
 <script>
   emailjs.init("442ajRLZxyEQJlOH9"); // <-- ici tu mets ta Public Key
 </script>
+<script src="app.js"></script>
 </body>
 </html>
