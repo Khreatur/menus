@@ -626,11 +626,15 @@ async function initMenu() {
     div.classList.add("menu-item");
     div.dataset.index = index;
 
-    div.innerHTML = `
-      <div class="day-label">${dm.day} ${dm.meal}</div>
-      <div class="recipes-container"></div>
-      <button class="add-recipe-btn">+ Ajouter un item</button>
-    `;
+   div.innerHTML = `
+  <div class="day-label">${dm.day} ${dm.meal}</div>
+  <div class="recipes-container"></div>
+  <button class="add-recipe-btn">+ Ajouter un item</button>
+  <div class="search-recipe-wrapper">
+    <input type="text" class="search-recipe-input" placeholder="Chercher une recette..." />
+    <ul class="search-recipe-dropdown hidden"></ul>
+  </div>
+`;
 
     menuContainer.appendChild(div);
 
@@ -668,6 +672,59 @@ async function initMenu() {
         addRecipeLine(recipesContainer, newRecipe, index);
       };
     }
+    // --- RECHERCHE PAR CLAVIER ---
+const searchInput = div.querySelector(".search-recipe-input");
+const dropdown = div.querySelector(".search-recipe-dropdown");
+
+searchInput.addEventListener("input", () => {
+  const query = normalize(searchInput.value);
+  dropdown.innerHTML = "";
+
+  if (!query) {
+    dropdown.classList.add("hidden");
+    return;
+  }
+
+  const matches = allRecipesCache.filter(r => {
+    const name = r.properties?.Nom?.title?.[0]?.plain_text || "";
+    return normalize(name).includes(query);
+  });
+
+  if (!matches.length) {
+    dropdown.classList.add("hidden");
+    return;
+  }
+
+  matches.forEach(recipe => {
+    const li = document.createElement("li");
+    const name = recipe.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
+    const emoji = recipe.icon?.type === "emoji" ? recipe.icon.emoji + " " : "";
+    li.textContent = emoji + name;
+
+    li.addEventListener("mousedown", () => { // mousedown pour éviter le blur avant le clic
+      // Ajouter dans le modèle
+      selectedRecipes[index].push(recipe);
+      excludedRecipeIds.add(recipe.id);
+
+      // Ajouter dans l'UI
+      const recipesContainer = div.querySelector(".recipes-container");
+      addRecipeLine(recipesContainer, recipe, index);
+
+      // Réinitialiser le champ
+      searchInput.value = "";
+      dropdown.classList.add("hidden");
+    });
+
+    dropdown.appendChild(li);
+  });
+
+  dropdown.classList.remove("hidden");
+});
+
+// Fermer le dropdown si on clique ailleurs
+searchInput.addEventListener("blur", () => {
+  setTimeout(() => dropdown.classList.add("hidden"), 150);
+});
 
     // 5. AFFICHER toutes les recettes du jour
     selectedRecipes[index].forEach(r => {
