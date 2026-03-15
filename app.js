@@ -266,58 +266,38 @@ popup.onclick = () => {
 
 // ---------- UTILITAIRES ---------- //
 
-function listenOnce(onResult, onError) {
-  if (!SpeechRecognition) {
-    alert("Reconnaissance vocale non supportée");
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-  recognition.lang = "fr-FR";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  recognition.onresult = e => {
-    const text = e.results[0][0].transcript;
-    onResult(text);
-  };
-
-  recognition.onerror = e => {
-    onError(e);
-  };
-
-  recognition.start();
-}
 function getAllSelectedRecipesForMail() {
-  return Object.values(selectedRecipes)
-    .flat()
-    .map(extractRecipeForEmail);
+  return DAYS_MEALS.map((dm, index) => {
+    const recipes = selectedRecipes[index] || [];
+    return {
+      day: `${dm.day} ${dm.meal}`,
+      recipes: recipes.map(extractRecipeForEmail)
+    };
+  }).filter(entry => entry.recipes.length > 0); // on saute les jours vides
 }
 
 function buildClipboardHTML(locationsMap, recipesForMail) {
-  const recipesHTML = recipesForMail.map((r, index) => {
-    const slot = DAYS_MEALS[index];
-    const label = slot ? `${slot.day} ${slot.meal}` : "Jour inconnu";
-
-    return `
+  const recipesHTML = recipesForMail.map(entry => {
+    return entry.recipes.map(r => `
       <p>
-        <strong>${label} : ${r.nom}</strong><br>
+        <strong>${entry.day} : ${r.nom}</strong><br>
         <span style="font-weight: normal;">
           ${r.ingredients.join(", ")}
         </span>
       </p>
-    `;
+    `).join("");
   }).join("");
 
   const shopping = {};
-
-  recipesForMail.forEach(r => {
-    r.ingredients.forEach(ing => {
+  recipesForMail.forEach(entry => {
+    entry.recipes.forEach(r => {
+      r.ingredients.forEach(ing => {
       const lieu = locationsMap[ing] || "Lieu inconnu";
       if (!shopping[lieu]) shopping[lieu] = {};
       shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
     });
   });
+  }); 
 
   const sortedLieux = Object.keys(shopping).sort((a, b) =>
     a.localeCompare(b, "fr", { sensitivity: "base" })
