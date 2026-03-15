@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
 const USE_MOCK_DATA = false;
 
 // ---------- CONSTANTES ---------- //
+const EXCLUDED_CATEGORIES = ["SANDWICH", "SAUCE/CONDIMENT", "APERO", "BRUNCH"];
 const DAYS_MEALS = [
   { day: "Dimanche", meal: "midi" },
   { day: "Dimanche", meal: "soir" },
@@ -363,12 +364,19 @@ function getRandomRecipe(recipes) {
 
   return available[Math.floor(Math.random() * available.length)];
 }
+
 function filterRecipesBySeason(recipes, season) {
   return recipes.filter(recipe => {
     const seasons = recipe?.properties?.Saison?.multi_select || [];
-    return seasons.some(s => s.name === season);
+    const categories = recipe?.properties?.Categorie?.multi_select || [];
+
+    const isRightSeason = seasons.some(s => s.name === season);
+    const isExcluded = categories.some(c => EXCLUDED_CATEGORIES.includes(c.name));
+
+    return isRightSeason && !isExcluded;
   });
 }
+
 function isSoup(recipe) {
   const categories = recipe?.properties?.Categorie?.multi_select || [];
   return categories.some(c => c.name === "SOUPE");
