@@ -832,8 +832,6 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
 });
 
 startApp();
-
-});
 document.getElementById("sort-shopping-btn").addEventListener("click", async () => {
   const container = document.getElementById("shopping-list-container");
 
@@ -847,4 +845,5 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
     const shoppingData = buildShoppingData(recipesForMail, locations);
     renderShoppingList(shoppingData);
   }
+});
 });
