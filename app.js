@@ -275,6 +275,22 @@ function buildClipboardHTML(locationsMap, recipesForMail) {
   });
 
   let recipesHTML = "";
+
+Object.keys(byWeek).sort((a, b) => a - b).forEach(w => {
+  const { label, entries } = byWeek[w];
+
+  recipesHTML += `<h3>${label}</h3>`;
+
+  entries.forEach(entry => {
+    entry.recipes.forEach(r => {
+      recipesHTML += `
+        <p>
+          <strong>${entry.day} : ${r.nom}</strong><br>
+          <span style="font-weight:normal;">${r.ingredients.join(", ")}</span>
+        </p>`;
+    });
+  });
+});
   // ✅ Liste de courses globale (toutes semaines confondues)
 const shopping = {};
 
