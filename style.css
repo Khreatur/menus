@@ -607,3 +607,9 @@ h1 {
   height: 18px;
   margin-right: 6px;
 }
+#actions-container {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
