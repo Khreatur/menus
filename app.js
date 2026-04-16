@@ -944,6 +944,7 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
     );
 
     btn.textContent = "Copié ✅";
+    btn.disabled = false;
   } catch (err) {
     console.error(err);
     btn.disabled = false;
