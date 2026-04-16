@@ -730,7 +730,7 @@ function buildShoppingData(recipesForMail, locationsMap) {
 
   return shopping;
 }
-function renderShoppingList(shopping) {
+function renderShoppingList(shopping, icons) {
   const container = document.getElementById("shopping-list-container");
   container.innerHTML = "";
 
@@ -748,11 +748,33 @@ function renderShoppingList(shopping) {
     Object.entries(shopping[lieu]).forEach(([ing, data]) => {
       const row = document.createElement("div");
       row.classList.add("shopping-item");
-
+      const icon = icons?.[ing];
       // Nom + quantité
       const label = document.createElement("span");
       label.textContent = `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`;
       label.style.cursor = "pointer";
+      if (icon) {
+  const iconEl = document.createElement("span");
+
+  if (icon.startsWith("http")) {
+    const img = document.createElement("img");
+    img.src = icon;
+    img.style.width = "18px";
+    img.style.height = "18px";
+    img.style.marginRight = "6px";
+    img.style.verticalAlign = "middle";
+
+    label.appendChild(img);
+  } else {
+    iconEl.textContent = icon + " ";
+    label.appendChild(iconEl);
+  }
+}
+const text = document.createTextNode(
+  `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`
+);
+
+label.appendChild(text);
 
       // CLICK → afficher recettes
       label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
@@ -859,10 +881,10 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
 
   if (!container.classList.contains("hidden")) {
     const recipesForMail = getAllSelectedRecipesForMail();
-    const { locations } = await loadIngredientLocations();
+    const { locations, icons } = await loadIngredientLocations();
 
-    const shoppingData = buildShoppingData(recipesForMail, locations);
-    renderShoppingList(shoppingData);
+const shoppingData = buildShoppingData(recipesForMail, locations);
+renderShoppingList(shoppingData, icons);
   }
 });
 });

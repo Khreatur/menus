@@ -145,6 +145,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 9999;
 }
 .popup-content {
   background: white;
@@ -600,4 +601,9 @@ h1 {
 }
 #popup-ingredients li {
   padding: 4px 0;
+}
+.shopping-item img {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
 }
