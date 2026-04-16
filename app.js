@@ -956,13 +956,15 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
   const container = document.getElementById("shopping-list-container");
 
 
-  // 🔥 scroll automatique
 container.classList.remove("hidden");
 
+// attendre que le DOM applique le display
 requestAnimationFrame(() => {
-  container.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
+  requestAnimationFrame(() => {
+    container.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   });
 });
 
