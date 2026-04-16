@@ -21,6 +21,7 @@ button {
 
 /* Titre */
 h1 {
+  font-family: 'Poppins', sans-serif;
   text-align: center;
   color: #3a3028;
   font-size: 2rem;
