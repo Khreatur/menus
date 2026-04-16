@@ -958,15 +958,7 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
 
 container.classList.remove("hidden");
 
-// attendre que le DOM applique le display
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    container.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  });
-});
+
 
   const recipesForMail = getAllSelectedRecipesForMail();
   const { locations, icons } = await loadIngredientLocations();
@@ -977,6 +969,15 @@ requestAnimationFrame(() => {
   shoppingIsSorted = true;
 
   renderShoppingList(shoppingData, icons);
+  // attendre que le DOM ait fini de peindre + layout
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    container.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+});
 
   // 👉 afficher bouton copier après tri
   const copyBtn = document.getElementById("send-mail-btn");
