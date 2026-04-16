@@ -275,53 +275,37 @@ function buildClipboardHTML(locationsMap, recipesForMail) {
   });
 
   let recipesHTML = "";
-  let shoppingByWeek = "";
+  // ✅ Liste de courses globale (toutes semaines confondues)
+const shopping = {};
 
-  Object.keys(byWeek).sort((a, b) => a - b).forEach(w => {
-    const { label, entries } = byWeek[w];
-
-    recipesHTML += `<h3>${label}</h3>`;
-    entries.forEach(entry => {
-      entry.recipes.forEach(r => {
-        recipesHTML += `
-          <p>
-            <strong>${entry.day} : ${r.nom}</strong><br>
-            <span style="font-weight:normal;">${r.ingredients.join(", ")}</span>
-          </p>`;
-      });
-    });
-
-    // Liste de courses par semaine
-    const shopping = {};
-    entries.forEach(entry => {
-      entry.recipes.forEach(r => {
-        r.ingredients.forEach(ing => {
-          const lieu = locationsMap[ing] || "Lieu inconnu";
-          if (!shopping[lieu]) shopping[lieu] = {};
-          shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
-        });
-      });
-    });
-
-    const sortedLieux = Object.keys(shopping).sort((a, b) =>
-      a.localeCompare(b, "fr", { sensitivity: "base" })
-    );
-
-    shoppingByWeek += `<h3>${label} — Liste de courses</h3>`;
-    sortedLieux.forEach(lieu => {
-      const displayLieu = lieu.slice(3);
-      const items = Object.entries(shopping[lieu])
-        .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
-        .map(([ing, count]) => `- ${ing}${count > 1 ? ` (x${count})` : ""}`)
-        .join("<br>");
-
-      shoppingByWeek += `
-        <p>
-          <strong>${displayLieu}</strong><br>
-          <span style="font-weight:normal;">${items}</span>
-        </p>`;
+recipesForMail.forEach(entry => {
+  entry.recipes.forEach(r => {
+    r.ingredients.forEach(ing => {
+      const lieu = locationsMap[ing] || "Lieu inconnu";
+      if (!shopping[lieu]) shopping[lieu] = {};
+      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
     });
   });
+});
+let shoppingHTML = "";
+
+const sortedLieux = Object.keys(shopping).sort((a, b) =>
+  a.localeCompare(b, "fr", { sensitivity: "base" })
+);
+
+sortedLieux.forEach(lieu => {
+  const displayLieu = lieu.slice(3);
+  const items = Object.entries(shopping[lieu])
+    .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
+    .map(([ing, count]) => `- ${ing}${count > 1 ? ` (x${count})` : ""}`)
+    .join("<br>");
+
+  shoppingHTML += `
+    <p>
+      <strong>${displayLieu}</strong><br>
+      <span style="font-weight:normal;">${items}</span>
+    </p>`;
+});
 
   return `
     <h2>Menus sur 4 semaines</h2>
@@ -330,7 +314,7 @@ function buildClipboardHTML(locationsMap, recipesForMail) {
     ${recipesHTML}
     <br>
     <h4>LISTES DE COURSES</h4><br>
-    ${shoppingByWeek}
+    ${shoppingHTML}
   `;
 }
 
