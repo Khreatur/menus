@@ -953,6 +953,7 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
 
 startApp();
 document.getElementById("sort-shopping-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("sort-shopping-btn");
   const container = document.getElementById("shopping-list-container");
 
 
