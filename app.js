@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
 const USE_MOCK_DATA = false;
 
 // ---------- CONSTANTES ---------- //
-const EXCLUDED_CATEGORIES = ["SANDWICH", "SAUCE/CONDIMENT", "APERO", "BRUNCH"];
+const EXCLUDED_CATEGORIES = ["APERO", "BRUNCH"];
 
 // Tous les jours du dimanche au vendredi, matin et soir (pas de samedi)
 const DAYS_MEALS = [
