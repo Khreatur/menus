@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", () => {
 const USE_MOCK_DATA = false;
 
 // ---------- CONSTANTES ---------- //
+let currentShoppingState = null;
+let shoppingIsSorted = false;
 const EXCLUDED_CATEGORIES = ["APERO", "BRUNCH"];
 
 // Tous les jours du dimanche au vendredi, matin et soir (pas de samedi)
@@ -788,10 +790,19 @@ label.appendChild(
       trash.style.cursor = "pointer";
 
       trash.onclick = (e) => {
-        e.stopPropagation();
-        delete shopping[lieu][ing];
-        renderShoppingList(shopping, icons); // re-render
-      };
+  e.stopPropagation();
+
+  delete shopping[lieu][ing];
+
+  if (Object.keys(shopping[lieu]).length === 0) {
+    delete shopping[lieu];
+  }
+
+  // 🔥 MAJ état global
+  currentShoppingState = shopping;
+
+  renderShoppingList(shopping, icons);
+};
 
       const left = document.createElement("div");
 left.style.display = "flex";
@@ -850,6 +861,59 @@ async function startApp() {
     if (loader) loader.style.display = "none";
   }
 }
+function buildShoppingHTMLFromState(shopping, locationsMap) {
+  let html = "";
+
+  const sortedLieux = Object.keys(shopping || {}).sort((a, b) =>
+    a.localeCompare(b, "fr", { sensitivity: "base" })
+  );
+
+  sortedLieux.forEach(lieu => {
+    const displayLieu = lieu.slice(3);
+
+    const items = Object.entries(shopping[lieu])
+      .map(([ing, data]) => `- ${ing}${data.count > 1 ? ` (x${data.count})` : ""}`)
+      .join("<br>");
+
+    html += `
+      <p>
+        <strong>${displayLieu}</strong><br>
+        ${items}
+      </p>`;
+  });
+
+  return html;
+}
+function buildRecipesHTMLOnly(recipesForMail) {
+  const byWeek = {};
+
+  recipesForMail.forEach(entry => {
+    if (!byWeek[entry.week]) {
+      byWeek[entry.week] = { label: entry.weekLabel, entries: [] };
+    }
+    byWeek[entry.week].entries.push(entry);
+  });
+
+  let html = "";
+
+  Object.keys(byWeek).sort((a, b) => a - b).forEach(w => {
+    const { label, entries } = byWeek[w];
+
+    html += `<h3>${label}</h3>`;
+
+    entries.forEach(entry => {
+      entry.recipes.forEach(r => {
+        html += `
+          <p>
+            <strong>${entry.day} : ${r.nom}</strong><br>
+            ${r.ingredients.join(", ")}
+          </p>`;
+      });
+    });
+  });
+
+  return html;
+}
 
 
 // ---------- BOUTON COPIER ---------- //
@@ -862,15 +926,28 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
 
     const recipesForMail = getAllSelectedRecipesForMail();
     const { locations } = await loadIngredientLocations();
-    const clipboardHTML = buildClipboardHTML(locations, recipesForMail);
 
-    await copyToClipboardHTML(clipboardHTML, clipboardHTML.replace(/<[^>]+>/g, ""));
+    // 🔥 IMPORTANT : on reconstruit la liste à partir de l’état modifié
+    const shoppingHTML = buildShoppingHTMLFromState(currentShoppingState, locations);
 
-    btn.textContent = "Liste de course copiée ✅";
+    const clipboardHTML = `
+      <h2>Menus sur 4 semaines</h2>
+      <h4>RECETTES</h4>
+      ${buildRecipesHTMLOnly(recipesForMail)}
+      <h4>LISTE DE COURSES</h4>
+      ${shoppingHTML}
+    `;
+
+    await copyToClipboardHTML(
+      clipboardHTML,
+      clipboardHTML.replace(/<[^>]+>/g, "")
+    );
+
+    btn.textContent = "Copié ✅";
   } catch (err) {
     console.error(err);
-    btn.textContent = "Copier la liste";
     btn.disabled = false;
+    btn.textContent = "Copier les menus et la liste";
   }
 });
 
@@ -878,15 +955,20 @@ startApp();
 document.getElementById("sort-shopping-btn").addEventListener("click", async () => {
   const container = document.getElementById("shopping-list-container");
 
-  // toggle affichage
-  container.classList.toggle("hidden");
+  container.classList.remove("hidden");
 
-  if (!container.classList.contains("hidden")) {
-    const recipesForMail = getAllSelectedRecipesForMail();
-    const { locations, icons } = await loadIngredientLocations();
+  const recipesForMail = getAllSelectedRecipesForMail();
+  const { locations, icons } = await loadIngredientLocations();
 
-const shoppingData = buildShoppingData(recipesForMail, locations);
-renderShoppingList(shoppingData, icons);
-  }
+  const shoppingData = buildShoppingData(recipesForMail, locations);
+
+  currentShoppingState = shoppingData;
+  shoppingIsSorted = true;
+
+  renderShoppingList(shoppingData, icons);
+
+  // 👉 afficher bouton copier après tri
+  const copyBtn = document.getElementById("send-mail-btn");
+  copyBtn.style.display = "inline-block";
 });
 });
