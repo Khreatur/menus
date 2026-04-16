@@ -790,7 +790,7 @@ label.appendChild(
       trash.onclick = (e) => {
         e.stopPropagation();
         delete shopping[lieu][ing];
-        renderShoppingList(shopping); // re-render
+        renderShoppingList(shopping, icons); // re-render
       };
 
       const left = document.createElement("div");
