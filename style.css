@@ -582,3 +582,22 @@ h1 {
   padding: 10px;
   border: 1px solid #ddd;
 }
+#shopping-list-container {
+  margin: 20px auto;
+  max-width: 400px;
+}
+
+.shopping-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.shopping-item span {
+  flex-grow: 1;
+}
+#popup-ingredients li {
+  padding: 4px 0;
+}

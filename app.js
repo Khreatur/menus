@@ -769,8 +769,15 @@ function renderShoppingList(shopping) {
         renderShoppingList(shopping); // re-render
       };
 
-      row.appendChild(label);
-      row.appendChild(trash);
+      const left = document.createElement("div");
+left.style.display = "flex";
+left.style.alignItems = "center";
+left.style.gap = "8px";
+
+left.appendChild(label);
+left.appendChild(trash);
+
+row.appendChild(left);
       section.appendChild(row);
     });
 
@@ -785,7 +792,19 @@ function showRecipesUsingIngredient(ingredient, recipes) {
 
   recipes.forEach(r => {
     const li = document.createElement("li");
-    li.textContent = `${r.week} — ${r.day} : ${r.name}`;
+    
+
+// retrouver la recette complète pour l’icône
+const fullRecipe = allRecipesCache.find(rec => 
+  rec.properties?.Nom?.title?.[0]?.plain_text === r.name
+);
+
+let iconHtml = "";
+if (fullRecipe?.icon?.type === "emoji") {
+  iconHtml = fullRecipe.icon.emoji + " ";
+}
+
+li.innerHTML = `${iconHtml}${r.name}`;
     list.appendChild(li);
   });
 
