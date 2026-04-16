@@ -919,6 +919,7 @@ function buildRecipesHTMLOnly(recipesForMail) {
 // ---------- BOUTON COPIER ---------- //
 document.getElementById("send-mail-btn").addEventListener("click", async () => {
   const btn = document.getElementById("send-mail-btn");
+  const initialText = "Copier les menus et la liste";
 
   try {
     btn.disabled = true;
@@ -926,29 +927,31 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
 
     const recipesForMail = getAllSelectedRecipesForMail();
     const { locations } = await loadIngredientLocations();
-
-    // 🔥 IMPORTANT : on reconstruit la liste à partir de l’état modifié
-    const shoppingHTML = buildShoppingHTMLFromState(currentShoppingState, locations);
-
-    const clipboardHTML = `
-      <h2>Menus sur 4 semaines</h2>
-      <h4>RECETTES</h4>
-      ${buildRecipesHTMLOnly(recipesForMail)}
-      <h4>LISTE DE COURSES</h4>
-      ${shoppingHTML}
-    `;
+    const clipboardHTML = buildClipboardHTML(locations, recipesForMail);
 
     await copyToClipboardHTML(
       clipboardHTML,
       clipboardHTML.replace(/<[^>]+>/g, "")
     );
 
+    // message succès
     btn.textContent = "Copié ✅";
-    btn.disabled = false;
+
+    // reset après 2 secondes
+    setTimeout(() => {
+      btn.textContent = initialText;
+      btn.disabled = false;
+    }, 2000);
+
   } catch (err) {
     console.error(err);
-    btn.disabled = false;
-    btn.textContent = "Copier les menus et la liste";
+
+    btn.textContent = "Erreur";
+
+    setTimeout(() => {
+      btn.textContent = initialText;
+      btn.disabled = false;
+    }, 2000);
   }
 });
 
