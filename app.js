@@ -957,6 +957,7 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
 
 
 container.classList.remove("hidden");
+btn.style.display = "none";
 
 
 
