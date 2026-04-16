@@ -702,6 +702,96 @@ async function loadIngredientLocations() {
   }
 }
 
+function buildShoppingData(recipesForMail, locationsMap) {
+  const shopping = {};
+
+  recipesForMail.forEach(entry => {
+    entry.recipes.forEach(r => {
+      r.ingredients.forEach(ing => {
+        const lieu = locationsMap[ing] || "Lieu inconnu";
+
+        if (!shopping[lieu]) shopping[lieu] = {};
+        if (!shopping[lieu][ing]) {
+          shopping[lieu][ing] = {
+            count: 0,
+            recipes: []
+          };
+        }
+
+        shopping[lieu][ing].count += 1;
+        shopping[lieu][ing].recipes.push({
+          name: r.nom,
+          day: entry.day,
+          week: entry.weekLabel
+        });
+      });
+    });
+  });
+
+  return shopping;
+}
+function renderShoppingList(shopping) {
+  const container = document.getElementById("shopping-list-container");
+  container.innerHTML = "";
+
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, "fr", { sensitivity: "base" })
+  );
+
+  sortedLieux.forEach(lieu => {
+    const section = document.createElement("div");
+
+    const title = document.createElement("h4");
+    title.textContent = lieu.slice(3);
+    section.appendChild(title);
+
+    Object.entries(shopping[lieu]).forEach(([ing, data]) => {
+      const row = document.createElement("div");
+      row.classList.add("shopping-item");
+
+      // Nom + quantité
+      const label = document.createElement("span");
+      label.textContent = `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`;
+      label.style.cursor = "pointer";
+
+      // CLICK → afficher recettes
+      label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
+
+      // Bouton supprimer
+      const trash = document.createElement("img");
+      trash.src = "trash.PNG";
+      trash.classList.add("icon");
+      trash.style.cursor = "pointer";
+
+      trash.onclick = (e) => {
+        e.stopPropagation();
+        delete shopping[lieu][ing];
+        renderShoppingList(shopping); // re-render
+      };
+
+      row.appendChild(label);
+      row.appendChild(trash);
+      section.appendChild(row);
+    });
+
+    container.appendChild(section);
+  });
+}
+function showRecipesUsingIngredient(ingredient, recipes) {
+  document.getElementById("popup-title").textContent = ingredient;
+
+  const list = document.getElementById("popup-ingredients");
+  list.innerHTML = "";
+
+  recipes.forEach(r => {
+    const li = document.createElement("li");
+    li.textContent = `${r.week} — ${r.day} : ${r.name}`;
+    list.appendChild(li);
+  });
+
+  document.getElementById("recipe-popup").classList.remove("hidden");
+}
+
 
 // ---------- DÉMARRAGE ---------- //
 async function startApp() {
@@ -743,4 +833,18 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
 
 startApp();
 
+});
+document.getElementById("sort-shopping-btn").addEventListener("click", async () => {
+  const container = document.getElementById("shopping-list-container");
+
+  // toggle affichage
+  container.classList.toggle("hidden");
+
+  if (!container.classList.contains("hidden")) {
+    const recipesForMail = getAllSelectedRecipesForMail();
+    const { locations } = await loadIngredientLocations();
+
+    const shoppingData = buildShoppingData(recipesForMail, locations);
+    renderShoppingList(shoppingData);
+  }
 });

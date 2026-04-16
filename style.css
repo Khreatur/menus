@@ -571,3 +571,14 @@ h1 {
     max-width: 100%;
   }
 }
+.shopping-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+#shopping-list-container {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+}
