@@ -955,11 +955,15 @@ startApp();
 document.getElementById("sort-shopping-btn").addEventListener("click", async () => {
   const container = document.getElementById("shopping-list-container");
 
-  container.classList.remove("hidden");
+
   // 🔥 scroll automatique
-container.scrollIntoView({
-  behavior: "smooth",
-  block: "start"
+container.classList.remove("hidden");
+
+requestAnimationFrame(() => {
+  container.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 });
 
   const recipesForMail = getAllSelectedRecipesForMail();
