@@ -370,3 +370,202 @@ h1 {
   background: #f5f5f5;
   border-radius: 6px;
 }
+
+/* ===== LAYOUT 4 SEMAINES ===== */
+
+#weeks-container {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 12px 0 20px;
+}
+
+.week-column {
+  flex: 1 1 0;
+  min-width: 240px;
+  max-width: 320px;
+  background: #faf9f6;
+  border: 1px solid #e0dbd0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.week-header {
+  background: #3a3028;
+  color: #f0ece3;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.menu-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ===== BLOCS REPAS ===== */
+
+.menu-item {
+  background: #fff;
+  border: 1px solid #e8e3d8;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.day-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #5a5248;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Badge midi / soir */
+.meal-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.meal-midi {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.meal-soir {
+  background: #e8eaf6;
+  color: #3949ab;
+}
+
+/* ===== LIGNES RECETTES ===== */
+
+.recipe-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 0.82rem;
+}
+
+.recipe-line .icon-recette {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.recipe-line .name {
+  flex: 1;
+  cursor: pointer;
+  color: #2c2c2c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipe-line .name:hover {
+  text-decoration: underline;
+}
+
+.recipe-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.recipe-actions .icon {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.recipe-actions .icon:hover {
+  opacity: 1;
+}
+
+/* ===== BOUTON AJOUTER ===== */
+
+.add-recipe-btn {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: #888;
+  background: none;
+  border: 1px dashed #ccc;
+  border-radius: 5px;
+  padding: 3px 8px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s;
+}
+
+.add-recipe-btn:hover {
+  color: #3a3028;
+  border-color: #999;
+}
+
+/* ===== RECHERCHE ===== */
+
+.search-recipe-wrapper {
+  position: relative;
+  margin-top: 4px;
+}
+
+.search-recipe-input {
+  width: 100%;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+.search-recipe-dropdown {
+  position: absolute;
+  z-index: 100;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 100%;
+  max-height: 160px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.search-recipe-dropdown li {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.search-recipe-dropdown li:hover {
+  background: #f0ece3;
+}
+
+.search-recipe-dropdown.hidden {
+  display: none;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  #weeks-container {
+    flex-direction: column;
+  }
+  .week-column {
+    max-width: 100%;
+  }
+}

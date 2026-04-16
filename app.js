@@ -4,25 +4,34 @@ const USE_MOCK_DATA = false;
 
 // ---------- CONSTANTES ---------- //
 const EXCLUDED_CATEGORIES = ["SANDWICH", "SAUCE/CONDIMENT", "APERO", "BRUNCH"];
+
+// Tous les jours du dimanche au vendredi, matin et soir (pas de samedi)
 const DAYS_MEALS = [
   { day: "Dimanche", meal: "midi" },
   { day: "Dimanche", meal: "soir" },
-  { day: "Lundi", meal: "soir" },
-  { day: "Mardi", meal: "soir" },
+  { day: "Lundi",    meal: "midi" },
+  { day: "Lundi",    meal: "soir" },
+  { day: "Mardi",    meal: "midi" },
+  { day: "Mardi",    meal: "soir" },
+  { day: "Mercredi", meal: "midi" },
   { day: "Mercredi", meal: "soir" },
-  { day: "Jeudi", meal: "soir" },
+  { day: "Jeudi",    meal: "midi" },
+  { day: "Jeudi",    meal: "soir" },
+  { day: "Vendredi", meal: "midi" },
   { day: "Vendredi", meal: "soir" },
 ];
 
-let selectedRecipes = {}; 
+const NUM_WEEKS = 4;
+
+// selectedRecipes[weekIndex][dayIndex] = [recipe, ...]
+let selectedRecipes = {};
 let excludedRecipeIds = new Set();
-let ingredientMap = {}; // global
+let ingredientMap = {};
+let allRecipesCache = [];
 const popup = document.getElementById("recipe-popup");
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
-
 const speechSupported = !!SpeechRecognition;
-
 
 const MOCK_RECIPES = [
   {
@@ -33,15 +42,11 @@ const MOCK_RECIPES = [
       Categorie: { multi_select: [{ name: "PLAT" }] },
       Saison: { multi_select: [{ name: "Hiver" }, { name: "Automne" }] },
       Ingredients: [
-        { name: "Pâtes" },
-        { name: "Lardons" },
-        { name: "Œufs" },
-        { name: "Parmesan" },
-        { name: "Poivre" }
+        { name: "Pâtes" }, { name: "Lardons" }, { name: "Œufs" },
+        { name: "Parmesan" }, { name: "Poivre" }
       ]
     }
   },
-
   {
     id: "rec_2",
     icon: { type: "emoji", emoji: "🥗" },
@@ -50,15 +55,11 @@ const MOCK_RECIPES = [
       Categorie: { multi_select: [{ name: "PLAT" }] },
       Saison: { multi_select: [{ name: "Printemps" }, { name: "Été" }] },
       Ingredients: [
-        { name: "Salade romaine" },
-        { name: "Poulet" },
-        { name: "Parmesan" },
-        { name: "Croûtons" },
-        { name: "Sauce césar" }
+        { name: "Salade romaine" }, { name: "Poulet" }, { name: "Parmesan" },
+        { name: "Croûtons" }, { name: "Sauce césar" }
       ]
     }
   },
-
   {
     id: "rec_3",
     icon: { type: "emoji", emoji: "🍲" },
@@ -67,14 +68,11 @@ const MOCK_RECIPES = [
       Categorie: { multi_select: [{ name: "SOUPE" }] },
       Saison: { multi_select: [{ name: "Hiver" }] },
       Ingredients: [
-        { name: "Carottes" },
-        { name: "Poireaux" },
-        { name: "Pommes de terre" },
-        { name: "Oignon" }
+        { name: "Carottes" }, { name: "Poireaux" },
+        { name: "Pommes de terre" }, { name: "Oignon" }
       ]
     }
   },
-
   {
     id: "rec_4",
     icon: { type: "emoji", emoji: "🍛" },
@@ -83,15 +81,11 @@ const MOCK_RECIPES = [
       Categorie: { multi_select: [{ name: "PLAT" }] },
       Saison: { multi_select: [{ name: "Automne" }, { name: "Hiver" }] },
       Ingredients: [
-        { name: "Pois chiches" },
-        { name: "Lait de coco" },
-        { name: "Curry" },
-        { name: "Oignon" },
-        { name: "Riz" }
+        { name: "Pois chiches" }, { name: "Lait de coco" },
+        { name: "Curry" }, { name: "Oignon" }, { name: "Riz" }
       ]
     }
   },
-
   {
     id: "rec_5",
     icon: { type: "emoji", emoji: "🐟" },
@@ -100,40 +94,36 @@ const MOCK_RECIPES = [
       Categorie: { multi_select: [{ name: "PLAT" }] },
       Saison: { multi_select: [{ name: "Printemps" }, { name: "Été" }] },
       Ingredients: [
-        { name: "Saumon" },
-        { name: "Citron" },
-        { name: "Aneth" },
-        { name: "Pommes de terre" }
+        { name: "Saumon" }, { name: "Citron" },
+        { name: "Aneth" }, { name: "Pommes de terre" }
       ]
     }
   }
 ];
+
 const MOCK_INGREDIENTS = [
   { name: "Pâtes", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🍝" } },
   { name: "Lardons", lieu: "2 - Boucherie", icon: { type: "emoji", emoji: "🥓" } },
   { name: "Œufs", lieu: "2 - Boucherie", icon: { type: "emoji", emoji: "🥚" } },
   { name: "Parmesan", lieu: "3 - Fromagerie", icon: { type: "emoji", emoji: "🧀" } },
   { name: "Poivre", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🧂" } },
-
   { name: "Salade romaine", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥬" } },
   { name: "Poulet", lieu: "2 - Boucherie", icon: { type: "emoji", emoji: "🍗" } },
   { name: "Croûtons", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🥖" } },
   { name: "Sauce césar", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🥣" } },
-
   { name: "Carottes", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥕" } },
   { name: "Poireaux", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥬" } },
   { name: "Pommes de terre", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🥔" } },
   { name: "Oignon", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🧅" } },
-
   { name: "Pois chiches", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🫘" } },
   { name: "Lait de coco", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🥥" } },
   { name: "Curry", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🍛" } },
   { name: "Riz", lieu: "1 - Épicerie", icon: { type: "emoji", emoji: "🍚" } },
-
   { name: "Saumon", lieu: "5 - Poissonnerie", icon: { type: "emoji", emoji: "🐟" } },
   { name: "Citron", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🍋" } },
   { name: "Aneth", lieu: "4 - Fruits & légumes", icon: { type: "emoji", emoji: "🌿" } }
 ];
+
 const MIC_BLACK_SRC = "mic-noir.png";
 const MIC_GREEN_SRC = "mic-vert.png";
 
@@ -145,21 +135,15 @@ function getCurrentSeason() {
   const month = now.getMonth() + 1;
   const day = now.getDate();
 
-  if ((month === 3 && day >= 20) || (month > 3 && month < 6) || (month === 6 && day <= 20)) {
-    return "Printemps";
-  } else if ((month === 6 && day >= 21) || (month > 6 && month < 9) || (month === 9 && day <= 22)) {
-    return "Été";
-  } else if ((month === 9 && day >= 23) || (month > 9 && month < 12) || (month === 12 && day <= 20)) {
-    return "Automne";
-  } else {
-    return "Hiver";
-  }
+  if ((month === 3 && day >= 20) || (month > 3 && month < 6) || (month === 6 && day <= 20)) return "Printemps";
+  if ((month === 6 && day >= 21) || (month > 6 && month < 9) || (month === 9 && day <= 22)) return "Été";
+  if ((month === 9 && day >= 23) || (month > 9 && month < 12) || (month === 12 && day <= 20)) return "Automne";
+  return "Hiver";
 }
 
 // ---------- FETCH RECIPES ---------- //
 async function fetchRecipes() {
   if (USE_MOCK_DATA) return MOCK_RECIPES;
-  else{
   try {
     const res = await fetch("/api/recipes");
     const data = await res.json();
@@ -173,25 +157,21 @@ async function fetchRecipes() {
     return [];
   }
 }
-}
 
 // ---------- FETCH INGREDIENT MAP ---------- //
-
-
 async function fetchIngredientMap() {
   if (USE_MOCK_DATA) {
     ingredientMap = {};
     MOCK_INGREDIENTS.forEach(i => {
       ingredientMap[i.name] = i.icon?.emoji || null;
     });
-    return;}
-    else{
+    return;
+  }
   try {
     const res = await fetch("/api/ingredients");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
-    if (!Array.isArray(data.results)) return {};
+    if (!Array.isArray(data.results)) return;
 
     ingredientMap = {};
     data.results.forEach(ing => {
@@ -207,7 +187,6 @@ async function fetchIngredientMap() {
     ingredientMap = {};
   }
 }
-}
 
 // ---------- UPDATE RECIPE BLOCK ---------- //
 function updateRecipeBlock(block, recipe) {
@@ -219,10 +198,9 @@ function updateRecipeBlock(block, recipe) {
     else if (recipe.icon.type === "external")
       iconHTML = `<img src="${recipe.icon.external.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
     else if (recipe.icon.type === "custom_emoji")
-    iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
-   else if (recipe.icon.type === "file")
-    iconHTML = `<img src="${recipe.icon.file.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
-   
+      iconHTML = `<img src="${recipe.icon.custom_emoji.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
+    else if (recipe.icon.type === "file")
+      iconHTML = `<img src="${recipe.icon.file.url}" style="width:22px;margin-right:6px;vertical-align:middle;">`;
   }
 
   block.querySelector(".icon-recette").innerHTML = iconHTML;
@@ -258,110 +236,125 @@ function showIngredients(recipe) {
   document.getElementById("recipe-popup").classList.remove("hidden");
 }
 
-// fermer la pop-in au clic
-popup.onclick = () => {
-  popup.classList.add("hidden");
-};
-
+popup.onclick = () => popup.classList.add("hidden");
 
 
 // ---------- UTILITAIRES ---------- //
 
+// Retourne tous les repas sélectionnés, pour toutes les semaines
 function getAllSelectedRecipesForMail() {
-  return DAYS_MEALS.map((dm, index) => {
-    const recipes = selectedRecipes[index] || [];
-    return {
-      day: `${dm.day} ${dm.meal}`,
-      recipes: recipes.map(extractRecipeForEmail)
-    };
-  }).filter(entry => entry.recipes.length > 0); // on saute les jours vides
+  const all = [];
+
+  for (let w = 0; w < NUM_WEEKS; w++) {
+    if (!selectedRecipes[w]) continue;
+
+    const weekLabel = getWeekLabel(w);
+
+    DAYS_MEALS.forEach((dm, dayIndex) => {
+      const recipes = (selectedRecipes[w][dayIndex] || []).filter(Boolean);
+      if (!recipes.length) return;
+
+      all.push({
+        week: w,
+        weekLabel,
+        day: `${dm.day} ${dm.meal}`,
+        recipes: recipes.map(extractRecipeForEmail)
+      });
+    });
+  }
+
+  return all;
 }
 
 function buildClipboardHTML(locationsMap, recipesForMail) {
-  const recipesHTML = recipesForMail.map(entry => {
-    return entry.recipes.map(r => `
-      <p>
-        <strong>${entry.day} : ${r.nom}</strong><br>
-        <span style="font-weight: normal;">
-          ${r.ingredients.join(", ")}
-        </span>
-      </p>
-    `).join("");
-  }).join("");
-
-  const shopping = {};
+  // Grouper par semaine
+  const byWeek = {};
   recipesForMail.forEach(entry => {
-    entry.recipes.forEach(r => {
-      r.ingredients.forEach(ing => {
-      const lieu = locationsMap[ing] || "Lieu inconnu";
-      if (!shopping[lieu]) shopping[lieu] = {};
-      shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+    if (!byWeek[entry.week]) byWeek[entry.week] = { label: entry.weekLabel, entries: [] };
+    byWeek[entry.week].entries.push(entry);
+  });
+
+  let recipesHTML = "";
+  let shoppingByWeek = "";
+
+  Object.keys(byWeek).sort((a, b) => a - b).forEach(w => {
+    const { label, entries } = byWeek[w];
+
+    recipesHTML += `<h3>${label}</h3>`;
+    entries.forEach(entry => {
+      entry.recipes.forEach(r => {
+        recipesHTML += `
+          <p>
+            <strong>${entry.day} : ${r.nom}</strong><br>
+            <span style="font-weight:normal;">${r.ingredients.join(", ")}</span>
+          </p>`;
+      });
+    });
+
+    // Liste de courses par semaine
+    const shopping = {};
+    entries.forEach(entry => {
+      entry.recipes.forEach(r => {
+        r.ingredients.forEach(ing => {
+          const lieu = locationsMap[ing] || "Lieu inconnu";
+          if (!shopping[lieu]) shopping[lieu] = {};
+          shopping[lieu][ing] = (shopping[lieu][ing] || 0) + 1;
+        });
+      });
+    });
+
+    const sortedLieux = Object.keys(shopping).sort((a, b) =>
+      a.localeCompare(b, "fr", { sensitivity: "base" })
+    );
+
+    shoppingByWeek += `<h3>${label} — Liste de courses</h3>`;
+    sortedLieux.forEach(lieu => {
+      const displayLieu = lieu.slice(3);
+      const items = Object.entries(shopping[lieu])
+        .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
+        .map(([ing, count]) => `- ${ing}${count > 1 ? ` (x${count})` : ""}`)
+        .join("<br>");
+
+      shoppingByWeek += `
+        <p>
+          <strong>${displayLieu}</strong><br>
+          <span style="font-weight:normal;">${items}</span>
+        </p>`;
     });
   });
-  }); 
-
-  const sortedLieux = Object.keys(shopping).sort((a, b) =>
-    a.localeCompare(b, "fr", { sensitivity: "base" })
-  );
-
-  const shoppingHTML = sortedLieux.map(lieu => {
-    const displayLieu = lieu.slice(3);
-    const items = Object.entries(shopping[lieu])
-      .sort(([a], [b]) => a.localeCompare(b, "fr", { sensitivity: "base" }))
-      .map(([ing, count]) =>
-        `- ${ing}${count > 1 ? ` (x${count})` : ""}`
-      )
-      .join("<br>");
-
-    return `
-      <p>
-        <strong>${displayLieu}</strong><br>
-        <span style="font-weight: normal;">
-          ${items}
-        </span>
-      </p>
-    `;
-  }).join("");
 
   return `
-    <h3>${getNextMondayLabel()}</h3>
+    <h2>Menus sur 4 semaines</h2>
     <br>
-    <h4>RECETTES</h4>
-    <br>
+    <h4>RECETTES</h4><br>
     ${recipesHTML}
     <br>
-    <h4>LISTE DE COURSES</h4>
-    <br>
-    ${shoppingHTML}
+    <h4>LISTES DE COURSES</h4><br>
+    ${shoppingByWeek}
   `;
 }
-
 
 async function copyToClipboardHTML(html, fallbackText) {
   const item = new ClipboardItem({
     "text/html": new Blob([html], { type: "text/html" }),
-    "text/plain": new Blob([fallbackText], { type: "text/plain" }) // sécurité
+    "text/plain": new Blob([fallbackText], { type: "text/plain" })
   });
-
   await navigator.clipboard.write([item]);
 }
-
 
 function normalize(str) {
   return str
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // supprime accents
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z\s]/g, "")
     .trim();
 }
+
+// excludedRecipeIds est partagé entre toutes les semaines pour éviter les doublons globaux
 function getRandomRecipe(recipes) {
   const available = recipes.filter(r => !excludedRecipeIds.has(r.id));
-
-  if (available.length === 0) {
-    return null; // plus rien de dispo
-  }
-
+  if (available.length === 0) return null;
   return available[Math.floor(Math.random() * available.length)];
 }
 
@@ -369,11 +362,8 @@ function filterRecipesBySeason(recipes, season) {
   return recipes.filter(recipe => {
     const seasons = recipe?.properties?.Saison?.multi_select || [];
     const categories = recipe?.properties?.Categorie?.multi_select || [];
-
-    const isRightSeason = seasons.some(s => s.name === season);
-    const isExcluded = categories.some(c => EXCLUDED_CATEGORIES.includes(c.name));
-
-    return isRightSeason && !isExcluded;
+    return seasons.some(s => s.name === season) &&
+           !categories.some(c => EXCLUDED_CATEGORIES.includes(c.name));
   });
 }
 
@@ -381,205 +371,167 @@ function isSoup(recipe) {
   const categories = recipe?.properties?.Categorie?.multi_select || [];
   return categories.some(c => c.name === "SOUPE");
 }
+
 function extractRecipeForEmail(recipe) {
   return {
     nom: recipe?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom",
     ingredients: (recipe?.properties?.Ingredients || []).map(i => i.name)
   };
 }
-function getNextMondayLabel() {
+
+// Retourne le label de la semaine N à partir d'aujourd'hui
+function getWeekLabel(weekIndex) {
   const today = new Date();
   const day = today.getDay(); // 0 = dimanche
-
   const daysUntilNextMonday = (8 - day) % 7 || 7;
-  const nextMonday = new Date(today);
-  nextMonday.setDate(today.getDate() + daysUntilNextMonday);
+
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + daysUntilNextMonday + weekIndex * 7);
 
   const options = { day: "numeric", month: "long" };
-  const formattedDate = nextMonday.toLocaleDateString("fr-FR", options);
-
-  return `Menus de la semaine du ${formattedDate}`;
+  return `Semaine ${weekIndex + 1} — du ${monday.toLocaleDateString("fr-FR", options)}`;
 }
+
 function scoreRecipe(spoken, recipeName) {
   const spokenWords = normalize(spoken).split(" ");
   const recipeWords = normalize(recipeName).split(" ");
-
   let score = 0;
-
   spokenWords.forEach(word => {
-    if (recipeWords.includes(word)) {
-      // bonus fort pour mots longs (discriminants)
-      score += word.length >= 6 ? 5 : 2;
-    }
+    if (recipeWords.includes(word)) score += word.length >= 6 ? 5 : 2;
   });
-
-  // bonus si la phrase complète est incluse
-  if (normalize(recipeName).includes(normalize(spoken))) {
-    score += 10;
-  }
-
-  // pénalité si le nom est très long
+  if (normalize(recipeName).includes(normalize(spoken))) score += 10;
   score -= Math.max(0, recipeWords.length - spokenWords.length);
-
   return score;
 }
 
 function findClosestRecipe(spokenText, recipes) {
   let best = null;
   let bestScore = -Infinity;
-
   recipes.forEach(r => {
     const name = r.properties?.Nom?.title?.[0]?.plain_text;
     if (!name) return;
-
     const score = scoreRecipe(spokenText, name);
-
-    if (score > bestScore) {
-      bestScore = score;
-      best = r;
-    }
+    if (score > bestScore) { bestScore = score; best = r; }
   });
-
   return bestScore > 0 ? best : null;
 }
+
 function stopMic(micBtn, micTimeout) {
   if (micTimeout) clearTimeout(micTimeout);
   micBtn.src = MIC_BLACK_SRC;
   micBtn.classList.remove("listening");
 }
 
+function listenOnce(onResult, onError) {
+  if (!speechSupported) {
+    onError && onError(new Error("Speech recognition not supported"));
+    return;
+  }
+  const recognition = new SpeechRecognition();
+  recognition.lang = "fr-FR";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = e => onResult(e.results[0][0].transcript);
+  recognition.onerror = e => onError && onError(e.error);
+  recognition.start();
+}
 
 
-// ---------- AJOUTER RECETTES --------- //
+// ---------- AJOUTER UNE LIGNE DE RECETTE ---------- //
 
-function addRecipeLine(container, recipe, dayIndex) {
-
-
+function addRecipeLine(container, recipe, weekIndex, dayIndex) {
   const line = document.createElement("div");
   line.classList.add("recipe-line");
 
- line.innerHTML = `
-  <span class="icon-recette"></span>
-  <span class="name"></span>
-  <div class="recipe-actions">
-    <img src="mic-noir.png" class="icon icon-mic" title="Dicter une recette" />
-    <img src="change.png" class="icon icon-change" title="Modifier la recette" />
-    <img src="trash.PNG" class="icon icon-trash" title="Supprimer la recette" />
+  line.innerHTML = `
+    <span class="icon-recette"></span>
+    <span class="name"></span>
+    <div class="recipe-actions">
+      <img src="mic-noir.png" class="icon icon-mic" title="Dicter une recette" />
+      <img src="change.png" class="icon icon-change" title="Modifier la recette" />
+      <img src="trash.PNG" class="icon icon-trash" title="Supprimer la recette" />
     </div>
-`;
+  `;
 
-const micBtn = line.querySelector(".icon-mic");
+  const micBtn = line.querySelector(".icon-mic");
+  let micTimeout;
 
-micBtn.onclick = (e) => {
-  e.stopPropagation();
-  micBtn.src = MIC_GREEN_SRC;
-  micBtn.classList.add("listening");
+  micBtn.onclick = (e) => {
+    e.stopPropagation();
+    micBtn.src = MIC_GREEN_SRC;
+    micBtn.classList.add("listening");
 
- micTimeout = setTimeout(() => {
-  stopMic(micBtn, micTimeout);
-}, 8000);
+    micTimeout = setTimeout(() => stopMic(micBtn, micTimeout), 8000);
 
-  listenOnce(
-    spokenText => {
-      stopMic(micBtn, micTimeout);
+    listenOnce(
+      spokenText => {
+        stopMic(micBtn, micTimeout);
+        const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
+        if (!newRecipe) { alert(`Aucune recette trouvée pour "${spokenText}"`); return; }
 
-      const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
+        const idx = selectedRecipes[weekIndex][dayIndex].indexOf(recipe);
+        selectedRecipes[weekIndex][dayIndex][idx] = newRecipe;
+        updateRecipeBlock(line, newRecipe);
 
-      if (!newRecipe) {
-        alert(`Aucune recette trouvée pour "${spokenText}"`);
-        return;
+        line.querySelector(".name").onclick = () => showIngredients(newRecipe);
+        line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
+        recipe = newRecipe;
+      },
+      error => {
+        stopMic(micBtn, micTimeout);
+        console.error("Erreur reconnaissance vocale", error);
       }
-
-      const idx = selectedRecipes[dayIndex].indexOf(recipe);
-      selectedRecipes[dayIndex][idx] = newRecipe;
-
-      updateRecipeBlock(line, newRecipe);
-
-      line.querySelector(".name").onclick = () => showIngredients(newRecipe);
-      line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
-
-      recipe = newRecipe;
-    },
-    error => {
- stopMic(micBtn, micTimeout);
-
-      console.error("Erreur reconnaissance vocale", error);
-      // 👉 retour en noir même en cas d’erreur
-      micBtn.src = MIC_BLACK_SRC;
-      micBtn.classList.remove("listening");
-    }
-  );
-};
-
+    );
+  };
 
   container.appendChild(line);
   updateRecipeBlock(line, recipe);
 
-  // pop-in ingrédients
   line.querySelector(".name").onclick = () => showIngredients(recipe);
   line.querySelector(".icon-recette").onclick = () => showIngredients(recipe);
 
+  // Bouton modifier
+  line.querySelector(".icon-change").onclick = (e) => {
+    e.stopPropagation();
+    excludedRecipeIds.add(recipe.id);
 
-  // bouton modifier
-line.querySelector(".icon-change").onclick = (e) => {
-  e.stopPropagation();
-  excludedRecipeIds.add(recipe.id);
+    const isSundayEvening =
+      DAYS_MEALS[dayIndex].day === "Dimanche" &&
+      DAYS_MEALS[dayIndex].meal === "soir" &&
+      getCurrentSeason() === "Hiver";
 
-const isSundaySoup =
-  DAYS_MEALS[dayIndex].day === "Dimanche" &&
-  DAYS_MEALS[dayIndex].meal === "soir" &&
-  getCurrentSeason() === "Hiver";
+    const source = isSundayEvening
+      ? allRecipesCache.filter(isSoup)
+      : allRecipesCache;
 
-const source = isSundaySoup
-  ? allRecipesCache.filter(isSoup)
-  : allRecipesCache;
+    const newRecipe = getRandomRecipe(source);
+    if (!newRecipe) { alert("Plus de recettes disponibles"); return; }
 
-const available = source.filter(r =>
-  !excludedRecipeIds.has(r.id)
-);
+    const idx = selectedRecipes[weekIndex][dayIndex].indexOf(recipe);
+    selectedRecipes[weekIndex][dayIndex][idx] = newRecipe;
+    updateRecipeBlock(line, newRecipe);
 
+    line.querySelector(".name").onclick = () => showIngredients(newRecipe);
+    line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
+    recipe = newRecipe;
+  };
 
-  if (!available.length) {
-    alert("Plus de recettes disponibles");
-    return;
-  }
-
-  const newRecipe = getRandomRecipe(available);
-
-  const idx = selectedRecipes[dayIndex].indexOf(recipe);
-  selectedRecipes[dayIndex][idx] = newRecipe;
-
-  updateRecipeBlock(line, newRecipe);
-
-  // rebind des clics
-  line.querySelector(".name").onclick = () => showIngredients(newRecipe);
-  line.querySelector(".icon-recette").onclick = () => showIngredients(newRecipe);
-
-  recipe = newRecipe;
-};
-// bouton supprimer
-line.querySelector(".icon-trash").onclick = (e) => {
-  e.stopPropagation();
-  // retirer du state
-  selectedRecipes[dayIndex] = selectedRecipes[dayIndex].filter(
-    r => r.id !== recipe.id
-  );
-
-  // optionnel : rendre la recette à nouveau disponible
-  excludedRecipeIds.delete(recipe.id);
-
-  // retirer du DOM
-  line.remove();
-};
-
-
+  // Bouton supprimer
+  line.querySelector(".icon-trash").onclick = (e) => {
+    e.stopPropagation();
+    selectedRecipes[weekIndex][dayIndex] =
+      selectedRecipes[weekIndex][dayIndex].filter(r => r.id !== recipe.id);
+    excludedRecipeIds.delete(recipe.id);
+    line.remove();
+  };
 }
+
 
 // ---------- INIT MENU ---------- //
 async function initMenu() {
-  const menuContainer = document.getElementById("menu-list");
-  if (!menuContainer) {
-    console.error("menu-list introuvable ! Impossible d'afficher le menu.");
+  const weeksContainer = document.getElementById("weeks-container");
+  if (!weeksContainer) {
+    console.error("weeks-container introuvable !");
     return;
   }
 
@@ -590,153 +542,152 @@ async function initMenu() {
   const soups = recipes.filter(isSoup);
 
   if (!recipes.length) {
-    menuContainer.textContent = `Aucune recette pour la saison : ${CURRENT_SEASON}`;
+    weeksContainer.textContent = `Aucune recette pour la saison : ${CURRENT_SEASON}`;
     return;
   }
 
-  menuContainer.innerHTML = "";
-  selectedRecipes = [];
+  weeksContainer.innerHTML = "";
+  selectedRecipes = {};
 
-  DAYS_MEALS.forEach((dm, index) => {
-    // 1. choisir la recette initiale
-    let recipe;
-    if (CURRENT_SEASON === "Hiver" && index === 1 && soups.length > 0) {
-      recipe = getRandomRecipe(soups);
-    } else {
-      recipe = getRandomRecipe(recipes);
-    }
+  for (let w = 0; w < NUM_WEEKS; w++) {
+    selectedRecipes[w] = {};
 
-    // 2. selectedRecipes = TOUJOURS un tableau
-    selectedRecipes[index] = [recipe];
+    // --- Colonne semaine ---
+    const weekCol = document.createElement("div");
+    weekCol.classList.add("week-column");
+    weekCol.dataset.week = w;
 
-    // 3. créer le bloc du jour
-    const div = document.createElement("div");
-    div.classList.add("menu-item");
-    div.dataset.index = index;
+    const weekHeader = document.createElement("div");
+    weekHeader.classList.add("week-header");
+    weekHeader.textContent = getWeekLabel(w);
+    weekCol.appendChild(weekHeader);
 
-   div.innerHTML = `
-  <div class="day-label">${dm.day} ${dm.meal}</div>
-  <div class="recipes-container"></div>
-  <button class="add-recipe-btn">+ Ajouter un item</button>
-  <div class="search-recipe-wrapper">
-    <input type="text" class="search-recipe-input" placeholder="Chercher une recette..." />
-    <ul class="search-recipe-dropdown hidden"></ul>
-  </div>
-`;
+    const menuList = document.createElement("div");
+    menuList.classList.add("menu-list");
+    weekCol.appendChild(menuList);
 
-    menuContainer.appendChild(div);
+    weeksContainer.appendChild(weekCol);
 
-    // 4. récupérer le conteneur recettes et bouton ajouter
-    const recipesContainer = div.querySelector(".recipes-container");
-    const addBtn = div.querySelector(".add-recipe-btn");
+    // --- Créneaux du jour ---
+    DAYS_MEALS.forEach((dm, dayIndex) => {
+      // Choisir la recette initiale
+      let recipe;
+      const isSundayEvening =
+        dm.day === "Dimanche" && dm.meal === "soir" && CURRENT_SEASON === "Hiver";
 
-    if (addBtn) {
+      if (isSundayEvening && soups.length > 0) {
+        recipe = getRandomRecipe(soups);
+      } else {
+        recipe = getRandomRecipe(recipes);
+      }
+
+      selectedRecipes[w][dayIndex] = recipe ? [recipe] : [];
+      if (recipe) excludedRecipeIds.add(recipe.id);
+
+      // Bloc du jour
+      const div = document.createElement("div");
+      div.classList.add("menu-item");
+      div.dataset.week = w;
+      div.dataset.index = dayIndex;
+
+      div.innerHTML = `
+        <div class="day-label">${dm.day} <span class="meal-badge meal-${dm.meal}">${dm.meal}</span></div>
+        <div class="recipes-container"></div>
+        <button class="add-recipe-btn">+ Ajouter</button>
+        <div class="search-recipe-wrapper">
+          <input type="text" class="search-recipe-input" placeholder="Chercher une recette..." />
+          <ul class="search-recipe-dropdown hidden"></ul>
+        </div>
+      `;
+
+      menuList.appendChild(div);
+
+      const recipesContainer = div.querySelector(".recipes-container");
+      const addBtn = div.querySelector(".add-recipe-btn");
+
+      // Bouton ajouter
       addBtn.onclick = () => {
-        const isSundaySoup =
-          DAYS_MEALS[index].day === "Dimanche" &&
-          DAYS_MEALS[index].meal === "soir" &&
+        const isSE =
+          DAYS_MEALS[dayIndex].day === "Dimanche" &&
+          DAYS_MEALS[dayIndex].meal === "soir" &&
           getCurrentSeason() === "Hiver";
 
-        const source = isSundaySoup
-          ? allRecipesCache.filter(isSoup)
-          : allRecipesCache;
+        const source = isSE ? allRecipesCache.filter(isSoup) : allRecipesCache;
+        const newRecipe = getRandomRecipe(source);
+        if (!newRecipe) { alert("Plus de recettes disponibles"); return; }
 
-        const available = source.filter(r => !excludedRecipeIds.has(r.id));
-
-        if (!available.length) {
-          alert("Plus de recettes disponibles");
-          return;
-        }
-
-        const newRecipe = getRandomRecipe(available);
-
-        // exclure immédiatement pour éviter doublons
         excludedRecipeIds.add(newRecipe.id);
-
-        // ajouter dans le modèle
-        selectedRecipes[index].push(newRecipe);
-
-        // ajouter dans l’UI
-        addRecipeLine(recipesContainer, newRecipe, index);
+        selectedRecipes[w][dayIndex].push(newRecipe);
+        addRecipeLine(recipesContainer, newRecipe, w, dayIndex);
       };
-    }
-    // --- RECHERCHE PAR CLAVIER ---
-const searchInput = div.querySelector(".search-recipe-input");
-const dropdown = div.querySelector(".search-recipe-dropdown");
 
-searchInput.addEventListener("input", () => {
-  const query = normalize(searchInput.value);
-  dropdown.innerHTML = "";
+      // Recherche clavier
+      const searchInput = div.querySelector(".search-recipe-input");
+      const dropdown = div.querySelector(".search-recipe-dropdown");
 
-  if (!query) {
-    dropdown.classList.add("hidden");
-    return;
-  }
+      searchInput.addEventListener("input", () => {
+        const query = normalize(searchInput.value);
+        dropdown.innerHTML = "";
+        if (!query) { dropdown.classList.add("hidden"); return; }
 
-  const matches = allRecipesCache.filter(r => {
-    const name = r.properties?.Nom?.title?.[0]?.plain_text || "";
-    return normalize(name).includes(query);
-  });
+        const matches = allRecipesCache.filter(r => {
+          const name = r.properties?.Nom?.title?.[0]?.plain_text || "";
+          return normalize(name).includes(query);
+        });
 
-  if (!matches.length) {
-    dropdown.classList.add("hidden");
-    return;
-  }
+        if (!matches.length) { dropdown.classList.add("hidden"); return; }
 
-  matches.forEach(recipe => {
-    const li = document.createElement("li");
-    const name = recipe.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
-    const emoji = recipe.icon?.type === "emoji" ? recipe.icon.emoji + " " : "";
-    li.textContent = emoji + name;
+        matches.forEach(r => {
+          const li = document.createElement("li");
+          const name = r.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
+          const emoji = r.icon?.type === "emoji" ? r.icon.emoji + " " : "";
+          li.textContent = emoji + name;
 
-    li.addEventListener("mousedown", () => { // mousedown pour éviter le blur avant le clic
-      // Ajouter dans le modèle
-      selectedRecipes[index].push(recipe);
-      excludedRecipeIds.add(recipe.id);
+          li.addEventListener("mousedown", () => {
+            selectedRecipes[w][dayIndex].push(r);
+            excludedRecipeIds.add(r.id);
+            addRecipeLine(recipesContainer, r, w, dayIndex);
+            searchInput.value = "";
+            dropdown.classList.add("hidden");
+          });
 
-      // Ajouter dans l'UI
-      const recipesContainer = div.querySelector(".recipes-container");
-      addRecipeLine(recipesContainer, recipe, index);
+          dropdown.appendChild(li);
+        });
 
-      // Réinitialiser le champ
-      searchInput.value = "";
-      dropdown.classList.add("hidden");
+        dropdown.classList.remove("hidden");
+      });
+
+      searchInput.addEventListener("blur", () => {
+        setTimeout(() => dropdown.classList.add("hidden"), 150);
+      });
+
+      // Afficher les recettes initiales
+      selectedRecipes[w][dayIndex].forEach(r => {
+        addRecipeLine(recipesContainer, r, w, dayIndex);
+      });
     });
-
-    dropdown.appendChild(li);
-  });
-
-  dropdown.classList.remove("hidden");
-});
-
-// Fermer le dropdown si on clique ailleurs
-searchInput.addEventListener("blur", () => {
-  setTimeout(() => dropdown.classList.add("hidden"), 150);
-});
-
-    // 5. AFFICHER toutes les recettes du jour
-    selectedRecipes[index].forEach(r => {
-      addRecipeLine(recipesContainer, r, index);
-    });
-  });
+  }
 }
 
-// ----- PREPARATION DU MAIL -------- //
+
+// ---------- CHARGEMENT DES LIEUX ---------- //
 async function loadIngredientLocations() {
+  if (USE_MOCK_DATA) {
+    const map = {};
+    MOCK_INGREDIENTS.forEach(i => { map[i.name] = i.lieu || "Lieu inconnu"; });
+    return { locations: map, icons: {} };
+  }
   try {
-    const res = await fetch("/api/ingredients"); 
+    const res = await fetch("/api/ingredients");
     if (!res.ok) throw new Error("Impossible de charger les ingrédients depuis Notion");
 
     const data = await res.json();
-
-    const map = {}; // map lieux
-    const icons = {}; // map icônes
+    const map = {};
+    const icons = {};
 
     data.results.forEach(ing => {
       if (!ing.name) return;
-
       map[ing.name] = ing.lieu || "Lieu inconnu";
-
       if (ing.icon?.type === "emoji") icons[ing.name] = ing.icon.emoji;
       else if (ing.icon?.type === "custom_emoji") icons[ing.name] = ing.icon.custom_emoji.url;
       else if (ing.icon?.type === "external") icons[ing.name] = ing.icon.external.url;
@@ -744,7 +695,7 @@ async function loadIngredientLocations() {
       else icons[ing.name] = null;
     });
 
-    return { locations: map, icons: icons };
+    return { locations: map, icons };
   } catch (err) {
     console.error("Erreur loadIngredientLocations :", err);
     return { locations: {}, icons: {} };
@@ -752,25 +703,14 @@ async function loadIngredientLocations() {
 }
 
 
-
-
-// ---------- DEMARRAGE ---------- //
-
-  
-
+// ---------- DÉMARRAGE ---------- //
 async function startApp() {
   const loader = document.getElementById("loader");
   if (loader) loader.style.display = "block";
 
   try {
-    // fetch recettes et ingrédients en parallèle
-    const [recipes, _] = await Promise.all([
-      fetchRecipes(),
-      fetchIngredientMap()
-    ]);
-
-    await initMenu(); 
-
+    await Promise.all([fetchRecipes(), fetchIngredientMap()]);
+    await initMenu();
   } catch (err) {
     console.error("Erreur au démarrage de l'app :", err);
   } finally {
@@ -779,33 +719,19 @@ async function startApp() {
 }
 
 
-
-
-
-
+// ---------- BOUTON COPIER ---------- //
 document.getElementById("send-mail-btn").addEventListener("click", async () => {
   const btn = document.getElementById("send-mail-btn");
-
-  if (!selectedRecipes || selectedRecipes.length === 0) {
-    alert("Aucune recette sélectionnée ❌");
-    return;
-  }
 
   try {
     btn.disabled = true;
     btn.textContent = "Copie en cours...";
 
-    // ✅ CLIPBOARD ICI (synchronisé avec le clic)
     const recipesForMail = getAllSelectedRecipesForMail();
     const { locations } = await loadIngredientLocations();
-    const clipboardText = buildClipboardHTML(locations, recipesForMail);
-const clipboardHTML = buildClipboardHTML(locations, recipesForMail);
+    const clipboardHTML = buildClipboardHTML(locations, recipesForMail);
 
-await copyToClipboardHTML(clipboardHTML, clipboardText);
-
-
-    // ensuite seulement
-    //await sendEmail(false); // 👈 on enlève la copie dedans
+    await copyToClipboardHTML(clipboardHTML, clipboardHTML.replace(/<[^>]+>/g, ""));
 
     btn.textContent = "Liste de course copiée ✅";
   } catch (err) {
@@ -815,7 +741,6 @@ await copyToClipboardHTML(clipboardHTML, clipboardText);
   }
 });
 
-  startApp();
+startApp();
 
 });
-
