@@ -751,11 +751,10 @@ function renderShoppingList(shopping, icons) {
       const icon = icons?.[ing];
       // Nom + quantité
       const label = document.createElement("span");
-      label.textContent = `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`;
-      label.style.cursor = "pointer";
-      if (icon) {
-  const iconEl = document.createElement("span");
+label.style.cursor = "pointer";
 
+// Icône
+if (icon) {
   if (icon.startsWith("http")) {
     const img = document.createElement("img");
     img.src = icon;
@@ -763,15 +762,19 @@ function renderShoppingList(shopping, icons) {
     img.style.height = "18px";
     img.style.marginRight = "6px";
     img.style.verticalAlign = "middle";
-
     label.appendChild(img);
   } else {
-    iconEl.textContent = icon + " ";
-    label.appendChild(iconEl);
+    const iconSpan = document.createElement("span");
+    iconSpan.textContent = icon + " ";
+    label.appendChild(iconSpan);
   }
 }
-const text = document.createTextNode(
-  `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`
+
+// Texte (UNE seule fois)
+label.appendChild(
+  document.createTextNode(
+    `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`
+  )
 );
 
 label.appendChild(text);
