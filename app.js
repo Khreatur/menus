@@ -577,7 +577,11 @@ function buildMenusPayload() {
  
         return {
           name: r?.properties?.Nom?.title?.[0]?.plain_text || 'Sans nom',
-          icon
+          icon,
+          ingredients: (r?.properties?.Ingredients || []).map(i => ({
+            name: i.name,
+            icon: ingredientMap?.[i.name] || null
+          }))
         };
       });
     });
@@ -656,8 +660,11 @@ function displayLinks(shoppingUrl, menusUrl) {
   menusLink.href = menusUrl;
   menusLink.textContent = '→ Ouvrir les menus';
  
-  copyShoppingBtn.onclick = () => copyLink(shoppingUrl, copyShoppingBtn);
-  copyMenusBtn.onclick = () => copyLink(menusUrl, copyMenusBtn);
+copyShoppingBtn.onclick = () =>
+  copyLink(shoppingUrl, copyShoppingBtn, "📋 Liste de courses");
+
+copyMenusBtn.onclick = () =>
+  copyLink(menusUrl, copyMenusBtn, "🗓 Menus de la semaine");
  
   panel.style.display = 'block';
  
@@ -669,14 +676,25 @@ function displayLinks(shoppingUrl, menusUrl) {
   });
 }
  
-async function copyLink(url, btn) {
+async function copyLink(url, btn, label) {
   try {
-    await navigator.clipboard.writeText(url);
+    const html = `<a href="${url}">${label}</a>`;
+    const text = label + " : " + url;
+
+    const item = new ClipboardItem({
+      "text/html": new Blob([html], { type: "text/html" }),
+      "text/plain": new Blob([text], { type: "text/plain" })
+    });
+
+    await navigator.clipboard.write([item]);
+
     const original = btn.textContent;
-    btn.textContent = 'Copié ✅';
+    btn.textContent = "Copié ✅";
     setTimeout(() => { btn.textContent = original; }, 2000);
+
   } catch (e) {
-    alert('Impossible de copier : ' + url);
+    console.error(e);
+    alert("Impossible de copier");
   }
 }
 
@@ -1071,7 +1089,7 @@ function buildRecipesHTMLOnly(recipesForMail) {
 
 
 // ---------- BOUTON COPIER ---------- //
-document.getElementById("send-mail-btn").addEventListener("click", async () => {
+/*document.getElementById("send-mail-btn").addEventListener("click", async () => {
   const btn = document.getElementById("send-mail-btn");
   const initialText = "Copier les menus et la liste";
 
@@ -1107,7 +1125,7 @@ document.getElementById("send-mail-btn").addEventListener("click", async () => {
       btn.disabled = false;
     }, 2000);
   }
-});
+});*/
 
 startApp();
 document.getElementById("sort-shopping-btn").addEventListener("click", async () => {

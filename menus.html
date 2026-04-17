@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -240,6 +241,7 @@
     }
   </style>
 </head>
+
 <body>
 
 
@@ -265,6 +267,7 @@
 </div>
 
 <script>
+  document.addEventListener("DOMContentLoaded", () => {
 // ---- CONSTANTS ----
 const DAYS_ORDER = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
 const DAYS_JS    = [0,1,2,3,4,5]; // correspondance getDay()
@@ -285,10 +288,14 @@ function getCurrentDayIndex() {
 
 // ---- DESKTOP RENDER ----
 function renderDesktop(state) {
+
   const container = document.getElementById('desktop-view');
   container.innerHTML = '';
 
-  const todayDayName = DAYS_ORDER[getCurrentDayIndex()] || '';
+  const todayIndex = getCurrentDayIndex(); // 0-5 propre
+  const todayName = DAYS_ORDER[todayIndex] || '';
+
+
 
   state.weeks.forEach((week, wi) => {
     const block = document.createElement('div');
@@ -302,10 +309,16 @@ function renderDesktop(state) {
     const grid = document.createElement('div');
     grid.classList.add('calendar-grid');
 
-    DAYS_ORDER.forEach(dayName => {
-      const col = document.createElement('div');
-      col.classList.add('day-col');
-      if (wi === 0 && dayName === todayDayName) col.classList.add('today-col');
+DAYS_ORDER.forEach((dayName, di) => {
+  const col = document.createElement('div');
+  col.classList.add('day-col');
+
+  // highlight uniquement si jour correspond ET semaine existe
+  if (di === todayIndex && state.weeks.length > 0) {
+    col.classList.add('today-col');
+  }
+
+
 
       const hdr = document.createElement('div');
       hdr.classList.add('day-col-header');
@@ -338,6 +351,9 @@ function renderDesktop(state) {
             ico.innerHTML = iconHTML(r.icon);
             const name = document.createElement('span');
             name.textContent = r.name;
+            name.style.cursor = "pointer";
+
+            name.onclick = () => showIngredients(r);
             chip.appendChild(ico);
             chip.appendChild(name);
             slot.appendChild(chip);
@@ -419,6 +435,9 @@ function renderMobileSlot(idx) {
       const name = document.createElement('span');
       name.classList.add('mobile-recipe-name');
       name.textContent = r.name;
+      name.style.cursor = "pointer";
+
+      name.onclick = () => showIngredients(r);
 
       div.appendChild(ico);
       div.appendChild(name);
@@ -428,21 +447,63 @@ function renderMobileSlot(idx) {
 
   content.appendChild(block);
 }
+function showIngredients(recipe) {
+  const title = recipe.name || "Sans nom";
+  const ingredients = recipe.ingredients || [];
+
+  document.getElementById("popup-title").textContent = title;
+
+  const list = document.getElementById("popup-ingredients");
+  list.innerHTML = "";
+
+  ingredients.forEach(ing => {
+    const li = document.createElement("li");
+
+    let icon = "";
+    if (ing.icon) {
+      if (ing.icon.startsWith("http")) {
+        icon = `<img src="${ing.icon}" style="width:18px;margin-right:6px;vertical-align:middle;">`;
+      } else {
+        icon = `${ing.icon} `;
+      }
+    }
+
+    li.innerHTML = `${icon}${ing.name}`;
+    list.appendChild(li);
+  });
+
+  document.getElementById("recipe-popup").style.display = "flex";
+}
+
 
 // ---- INIT ----
 function findTodaySlotIndex() {
-  const todayDay = DAYS_ORDER[getCurrentDayIndex()];
   const now = new Date();
+
+  const todayDay = DAYS_ORDER[getCurrentDayIndex()];
   const isMorning = now.getHours() < 14;
   const meal = isMorning ? 'midi' : 'soir';
 
-  // On cherche dans la semaine 0 (première semaine)
+  // On cherche SANS se soucier de la semaine
   const idx = allSlots.findIndex(s =>
-    s.dayName === todayDay && s.meal === meal && s.weekLabel === allSlots[0]?.weekLabel
+    s.dayName === todayDay &&
+    s.meal === meal
   );
-  return idx >= 0 ? idx : 0;
-}
 
+  return idx; // peut être -1
+}
+function getCurrentWeekLabel(state) {
+  const now = new Date();
+
+  const day = now.getDay();
+  const daysUntilNextMonday = (8 - day) % 7 || 7;
+
+  const nextMonday = new Date(now);
+  nextMonday.setDate(now.getDate() + daysUntilNextMonday);
+
+  const options = { day: "numeric", month: "long" };
+  return `Semaine 1 — du ${nextMonday.toLocaleDateString("fr-FR", options)}`;
+}
 function init() {
   const hash = window.location.hash.slice(1);
   if (!hash) {
@@ -471,7 +532,13 @@ function init() {
 
   buildSlots(state);
   currentSlotIndex = findTodaySlotIndex();
+
+if (currentSlotIndex >= 0) {
   renderMobileSlot(currentSlotIndex);
+} else {
+  // aucun match → aucun highlight logique
+  renderMobileSlot(0);
+}
 
   document.getElementById('prev-btn').addEventListener('click', () => {
     if (currentSlotIndex > 0) { currentSlotIndex--; renderMobileSlot(currentSlotIndex); }
@@ -482,6 +549,35 @@ function init() {
 }
 
 init();
+  const popup = document.getElementById("recipe-popup");
+
+  if (popup) {
+    popup.onclick = () => {
+      popup.style.display = "none";
+    };
+  }
+
+});
 </script>
+<div id="recipe-popup" style="
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+">
+  <div style="
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    max-width:400px;
+    width:90%;
+  ">
+    <h3 id="popup-title" style="margin-bottom:10px;"></h3>
+    <ul id="popup-ingredients" style="line-height:1.6;"></ul>
+  </div>
+</div>
 </body>
 </html>

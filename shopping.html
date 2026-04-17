@@ -7,14 +7,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: Helvetica, serif;
+  /*background: #cbc5ea;*/
+  color: #16001e;
+}
 
-    body {
-      font-family: Georgia, 'Times New Roman', serif;
-      background: #faf8f4;
-      color: #2c2a25;
-      min-height: 100vh;
-      padding: 0 0 80px;
-    }
 
     header {
       background: #2c2a25;
@@ -31,6 +31,7 @@
     header h1 {
       font-size: 1.1rem;
       font-weight: normal;
+      color:white;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
@@ -56,11 +57,8 @@
     }
 
     .section-title {
-      font-size: 0.65rem;
       font-weight: normal;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #888;
+      font-weight:bold;
       padding: 16px 20px 8px;
       background: #f3f0ea;
       border-bottom: 1px solid #e8e4dc;
@@ -73,7 +71,7 @@
     .shopping-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       padding: 14px 20px;
       border-bottom: 1px solid #f0ece4;
       transition: background 0.15s;
@@ -344,7 +342,6 @@ function renderShopping(shopping) {
     container.appendChild(section);
   });
 
-  document.getElementById('legend').textContent = `${total} ingrédients · Appuyez sur un ingrédient pour voir les recettes`;
 }
 
 // ---- INIT ----
