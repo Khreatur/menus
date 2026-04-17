@@ -527,6 +527,158 @@ function addRecipeLine(container, recipe, weekIndex, dayIndex) {
     line.remove();
   };
 }
+function buildShoppingPayload(shopping, iconsMap) {
+  // Deep-clone + injection des icônes dans chaque ingrédient
+  const enriched = {};
+ 
+  Object.entries(shopping).forEach(([lieu, items]) => {
+    enriched[lieu] = {};
+    Object.entries(items).forEach(([ing, data]) => {
+      enriched[lieu][ing] = {
+        count: data.count,
+        recipes: data.recipes, // [{name, day, week}]
+        icon: iconsMap?.[ing] || null
+      };
+    });
+  });
+ 
+  return {
+    shopping: enriched,
+    generatedAt: new Date().toLocaleDateString('fr-FR', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    })
+  };
+}
+ 
+/**
+ * Construit le payload menus à encoder dans l'URL.
+ * Structure : { weeks: [ { label, meals: { "Lundi_midi": [{name, icon}] } } ], generatedAt }
+ */
+function buildMenusPayload() {
+  const weeks = [];
+ 
+  for (let w = 0; w < NUM_WEEKS; w++) {
+    if (!selectedRecipes[w]) continue;
+ 
+    const weekLabel = getWeekLabel(w);
+    const meals = {};
+ 
+    DAYS_MEALS.forEach((dm, dayIndex) => {
+      const key = `${dm.day}_${dm.meal}`;
+      const recipes = (selectedRecipes[w][dayIndex] || []).filter(Boolean);
+ 
+      meals[key] = recipes.map(r => {
+        // Récupérer l'icône de la recette
+        let icon = null;
+        if (r.icon?.type === 'emoji') icon = r.icon.emoji;
+        else if (r.icon?.type === 'external') icon = r.icon.external?.url || null;
+        else if (r.icon?.type === 'custom_emoji') icon = r.icon.custom_emoji?.url || null;
+        else if (r.icon?.type === 'file') icon = r.icon.file?.url || null;
+ 
+        return {
+          name: r?.properties?.Nom?.title?.[0]?.plain_text || 'Sans nom',
+          icon
+        };
+      });
+    });
+ 
+    weeks.push({ label: weekLabel, meals });
+  }
+ 
+  return {
+    weeks,
+    generatedAt: new Date().toLocaleDateString('fr-FR', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    })
+  };
+}
+ 
+/**
+ * Encode un objet JS en hash URL compressé (LZString).
+ */
+function encodeToHash(obj) {
+  return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
+}
+ 
+ 
+// ---------- GÉNÉRATION DES LIENS ---------- //
+ 
+/**
+ * Génère les deux liens et les affiche dans le panneau dédié.
+ * À appeler APRÈS que la liste de courses a été générée (currentShoppingState doit exister).
+ */
+async function generateLinks() {
+  const btn = document.getElementById('generate-links-btn');
+  btn.disabled = true;
+  btn.textContent = 'Génération…';
+ 
+  try {
+    // 1. On a besoin des icônes pour enrichir la liste de courses
+    const { icons } = await loadIngredientLocations();
+ 
+    if (!currentShoppingState || !shoppingIsSorted) {
+      alert('Génère d\'abord la liste de courses avant de créer les liens.');
+      return;
+    }
+ 
+    // 2. Payload liste de courses
+    const shoppingPayload = buildShoppingPayload(currentShoppingState, icons);
+    const shoppingHash = encodeToHash(shoppingPayload);
+    const shoppingUrl = `${location.origin}/shopping.html#${shoppingHash}`;
+ 
+    // 3. Payload menus
+    const menusPayload = buildMenusPayload();
+    const menusHash = encodeToHash(menusPayload);
+    const menusUrl = `${location.origin}/menus.html#${menusHash}`;
+ 
+    // 4. Affichage
+    displayLinks(shoppingUrl, menusUrl);
+ 
+  } catch (err) {
+    console.error('Erreur génération liens :', err);
+    alert('Erreur lors de la génération des liens.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔗 Générer les liens';
+  }
+}
+ 
+function displayLinks(shoppingUrl, menusUrl) {
+  const panel = document.getElementById('links-panel');
+  const shoppingLink = document.getElementById('link-shopping');
+  const menusLink = document.getElementById('link-menus');
+  const copyShoppingBtn = document.getElementById('copy-shopping-btn');
+  const copyMenusBtn = document.getElementById('copy-menus-btn');
+ 
+  shoppingLink.href = shoppingUrl;
+  shoppingLink.textContent = '→ Ouvrir la liste de courses';
+ 
+  menusLink.href = menusUrl;
+  menusLink.textContent = '→ Ouvrir les menus';
+ 
+  copyShoppingBtn.onclick = () => copyLink(shoppingUrl, copyShoppingBtn);
+  copyMenusBtn.onclick = () => copyLink(menusUrl, copyMenusBtn);
+ 
+  panel.style.display = 'block';
+ 
+  // Scroll vers le panel
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+ 
+async function copyLink(url, btn) {
+  try {
+    await navigator.clipboard.writeText(url);
+    const original = btn.textContent;
+    btn.textContent = 'Copié ✅';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  } catch (e) {
+    alert('Impossible de copier : ' + url);
+  }
+}
 
 
 // ---------- INIT MENU ---------- //
@@ -818,6 +970,8 @@ row.appendChild(left);
 
     container.appendChild(section);
   });
+  const genBtn = document.getElementById('generate-links-btn');
+if (genBtn) genBtn.style.display = 'inline-block';
 }
 function showRecipesUsingIngredient(ingredient, recipes) {
   document.getElementById("popup-title").textContent = ingredient;
@@ -989,4 +1143,5 @@ requestAnimationFrame(() => {
   const copyBtn = document.getElementById("send-mail-btn");
   copyBtn.style.display = "inline-block";
 });
+document.getElementById('generate-links-btn').addEventListener('click', generateLinks);
 });

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menus</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: #faf8f4;
+      color: #2c2a25;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #2c2a25;
+      color: #faf8f4;
+      padding: 20px 28px 16px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: normal;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    header .subtitle {
+      font-size: 0.75rem;
+      opacity: 0.5;
+      font-style: italic;
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 60px 24px;
+      color: #888;
+      font-style: italic;
+    }
+
+    /* =========================================
+       DESKTOP — CALENDAR GRID
+    ========================================= */
+    @media (min-width: 769px) {
+      #mobile-view { display: none; }
+
+      #desktop-view {
+        display: block;
+        padding: 32px 24px;
+        overflow-x: auto;
+      }
+
+      .week-block {
+        margin-bottom: 40px;
+      }
+
+      .week-title {
+        font-size: 0.7rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #999;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e8e4dc;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+      }
+
+      .day-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .day-col-header {
+        font-size: 0.65rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #aaa;
+        text-align: center;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #ece9e2;
+      }
+
+      .meal-slot {
+        background: white;
+        border: 1px solid #ece9e2;
+        border-radius: 8px;
+        padding: 10px 12px;
+        min-height: 72px;
+        position: relative;
+      }
+
+      .meal-badge {
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #bbb;
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .meal-badge.midi { color: #c8913a; }
+      .meal-badge.soir { color: #6a8fb5; }
+
+      .recipe-chip {
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+        font-size: 0.82rem;
+        line-height: 1.35;
+        color: #2c2a25;
+        margin-bottom: 4px;
+      }
+
+      .recipe-icon {
+        flex-shrink: 0;
+        font-size: 1rem;
+      }
+
+      .empty-slot {
+        color: #ddd;
+        font-size: 0.8rem;
+        font-style: italic;
+      }
+
+      .today-col .day-col-header {
+        color: #2c2a25;
+        font-weight: bold;
+      }
+
+      .today-col .meal-slot {
+        border-color: #c8913a;
+        background: #fffbf5;
+      }
+    }
+
+    /* =========================================
+       MOBILE — DAY VIEW
+    ========================================= */
+    @media (max-width: 768px) {
+      #desktop-view { display: none; }
+
+      #mobile-view {
+        display: block;
+      }
+
+      .mobile-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        background: #f3f0ea;
+        border-bottom: 1px solid #e8e4dc;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .nav-btn {
+        background: none;
+        border: none;
+        font-size: 1.4rem;
+        cursor: pointer;
+        color: #2c2a25;
+        padding: 4px 8px;
+        opacity: 0.7;
+      }
+
+      .nav-btn:disabled {
+        opacity: 0.2;
+      }
+
+      .nav-day-label {
+        text-align: center;
+        flex: 1;
+      }
+
+      .nav-day-label .day-name {
+        font-size: 0.9rem;
+        font-weight: normal;
+        letter-spacing: 0.05em;
+        color: #2c2a25;
+      }
+
+      .nav-day-label .week-name {
+        font-size: 0.7rem;
+        color: #aaa;
+        margin-top: 2px;
+        font-style: italic;
+      }
+
+      .mobile-day-content {
+        padding: 24px 20px;
+      }
+
+      .mobile-meal-block {
+        margin-bottom: 24px;
+      }
+
+      .mobile-meal-label {
+        font-size: 0.65rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      .mobile-meal-label.midi { color: #c8913a; }
+      .mobile-meal-label.soir { color: #6a8fb5; }
+
+      .mobile-recipe {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 14px 16px;
+        background: white;
+        border: 1px solid #ece9e2;
+        border-radius: 10px;
+        margin-bottom: 8px;
+      }
+
+      .mobile-recipe-icon {
+        font-size: 1.4rem;
+        flex-shrink: 0;
+      }
+
+      .mobile-recipe-icon img {
+        width: 28px;
+        height: 28px;
+      }
+
+      .mobile-recipe-name {
+        font-size: 0.95rem;
+        color: #2c2a25;
+        line-height: 1.4;
+        padding-top: 2px;
+      }
+
+      .mobile-empty {
+        color: #ccc;
+        font-style: italic;
+        font-size: 0.85rem;
+        padding: 10px 0;
+      }
+
+      .today-banner {
+        background: #c8913a;
+        color: white;
+        text-align: center;
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Menus</h1>
+  <span class="subtitle" id="header-subtitle">Chargement…</span>
+</header>
+
+<!-- DESKTOP -->
+<div id="desktop-view"></div>
+
+<!-- MOBILE -->
+<div id="mobile-view">
+  <div class="mobile-nav">
+    <button class="nav-btn" id="prev-btn">‹</button>
+    <div class="nav-day-label">
+      <div class="day-name" id="nav-day-name">—</div>
+      <div class="week-name" id="nav-week-name">—</div>
+    </div>
+    <button class="nav-btn" id="next-btn">›</button>
+  </div>
+  <div id="today-banner" class="today-banner" style="display:none">Aujourd'hui</div>
+  <div class="mobile-day-content" id="mobile-day-content"></div>
+</div>
+
+<script>
+// ---- CONSTANTS ----
+const DAYS_ORDER = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
+const DAYS_JS    = [0,1,2,3,4,5]; // correspondance getDay()
+
+// ---- HELPERS ----
+function iconHTML(icon) {
+  if (!icon) return '';
+  if (icon.startsWith('http')) return `<img src="${icon}" style="width:20px;height:20px;vertical-align:middle;">`;
+  return icon;
+}
+
+function getCurrentDayIndex() {
+  // Renvoie l'index dans DAYS_ORDER correspondant à aujourd'hui (dim=0, lun=1… ven=5)
+  const d = new Date().getDay(); // 0=dim, 1=lun … 6=sam
+  if (d === 6) return 5; // samedi → vendredi (dernier jour)
+  return DAYS_ORDER.findIndex((_, i) => DAYS_JS[i] === d);
+}
+
+// ---- DESKTOP RENDER ----
+function renderDesktop(state) {
+  const container = document.getElementById('desktop-view');
+  container.innerHTML = '';
+
+  const todayDayName = DAYS_ORDER[getCurrentDayIndex()] || '';
+
+  state.weeks.forEach((week, wi) => {
+    const block = document.createElement('div');
+    block.classList.add('week-block');
+
+    const title = document.createElement('div');
+    title.classList.add('week-title');
+    title.textContent = week.label;
+    block.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.classList.add('calendar-grid');
+
+    DAYS_ORDER.forEach(dayName => {
+      const col = document.createElement('div');
+      col.classList.add('day-col');
+      if (wi === 0 && dayName === todayDayName) col.classList.add('today-col');
+
+      const hdr = document.createElement('div');
+      hdr.classList.add('day-col-header');
+      hdr.textContent = dayName.substring(0, 3);
+      col.appendChild(hdr);
+
+      ['midi','soir'].forEach(meal => {
+        const slot = document.createElement('div');
+        slot.classList.add('meal-slot');
+
+        const badge = document.createElement('span');
+        badge.classList.add('meal-badge', meal);
+        badge.textContent = meal;
+        slot.appendChild(badge);
+
+        const key = `${dayName}_${meal}`;
+        const recipes = week.meals[key] || [];
+
+        if (!recipes.length) {
+          const empty = document.createElement('span');
+          empty.classList.add('empty-slot');
+          empty.textContent = '—';
+          slot.appendChild(empty);
+        } else {
+          recipes.forEach(r => {
+            const chip = document.createElement('div');
+            chip.classList.add('recipe-chip');
+            const ico = document.createElement('span');
+            ico.classList.add('recipe-icon');
+            ico.innerHTML = iconHTML(r.icon);
+            const name = document.createElement('span');
+            name.textContent = r.name;
+            chip.appendChild(ico);
+            chip.appendChild(name);
+            slot.appendChild(chip);
+          });
+        }
+
+        col.appendChild(slot);
+      });
+
+      grid.appendChild(col);
+    });
+
+    block.appendChild(grid);
+    container.appendChild(block);
+  });
+}
+
+// ---- MOBILE RENDER ----
+let allSlots = []; // [{weekLabel, dayName, meal, recipes}] dans l'ordre
+let currentSlotIndex = 0;
+
+function buildSlots(state) {
+  allSlots = [];
+  state.weeks.forEach(week => {
+    DAYS_ORDER.forEach(dayName => {
+      ['midi','soir'].forEach(meal => {
+        const key = `${dayName}_${meal}`;
+        allSlots.push({
+          weekLabel: week.label,
+          dayName,
+          meal,
+          recipes: week.meals[key] || []
+        });
+      });
+    });
+  });
+}
+
+function renderMobileSlot(idx) {
+  const slot = allSlots[idx];
+  if (!slot) return;
+
+  document.getElementById('nav-day-name').textContent = `${slot.dayName} ${slot.meal}`;
+  document.getElementById('nav-week-name').textContent = slot.weekLabel;
+
+  document.getElementById('prev-btn').disabled = idx === 0;
+  document.getElementById('next-btn').disabled = idx === allSlots.length - 1;
+
+  // Today banner
+  const todayDay = DAYS_ORDER[getCurrentDayIndex()];
+  const isToday = slot.dayName === todayDay;
+  document.getElementById('today-banner').style.display = isToday ? 'block' : 'none';
+
+  const content = document.getElementById('mobile-day-content');
+  content.innerHTML = '';
+
+  const block = document.createElement('div');
+  block.classList.add('mobile-meal-block');
+
+  const lbl = document.createElement('div');
+  lbl.classList.add('mobile-meal-label', slot.meal);
+  lbl.textContent = slot.meal === 'midi' ? 'Déjeuner' : 'Dîner';
+  block.appendChild(lbl);
+
+  if (!slot.recipes.length) {
+    const empty = document.createElement('div');
+    empty.classList.add('mobile-empty');
+    empty.textContent = 'Aucun repas prévu';
+    block.appendChild(empty);
+  } else {
+    slot.recipes.forEach(r => {
+      const div = document.createElement('div');
+      div.classList.add('mobile-recipe');
+
+      const ico = document.createElement('span');
+      ico.classList.add('mobile-recipe-icon');
+      ico.innerHTML = iconHTML(r.icon);
+
+      const name = document.createElement('span');
+      name.classList.add('mobile-recipe-name');
+      name.textContent = r.name;
+
+      div.appendChild(ico);
+      div.appendChild(name);
+      block.appendChild(div);
+    });
+  }
+
+  content.appendChild(block);
+}
+
+// ---- INIT ----
+function findTodaySlotIndex() {
+  const todayDay = DAYS_ORDER[getCurrentDayIndex()];
+  const now = new Date();
+  const isMorning = now.getHours() < 14;
+  const meal = isMorning ? 'midi' : 'soir';
+
+  // On cherche dans la semaine 0 (première semaine)
+  const idx = allSlots.findIndex(s =>
+    s.dayName === todayDay && s.meal === meal && s.weekLabel === allSlots[0]?.weekLabel
+  );
+  return idx >= 0 ? idx : 0;
+}
+
+function init() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) {
+    document.getElementById('desktop-view').innerHTML =
+      '<div class="error-msg">Lien invalide ou données manquantes.</div>';
+    document.getElementById('mobile-view').style.display = 'none';
+    return;
+  }
+
+  let state;
+  try {
+    const json = LZString.decompressFromEncodedURIComponent(hash);
+    state = JSON.parse(json);
+  } catch (e) {
+    document.getElementById('desktop-view').innerHTML =
+      '<div class="error-msg">Impossible de lire les données du lien.</div>';
+    return;
+  }
+
+  const subtitle = state.generatedAt || '';
+  document.getElementById('header-subtitle').textContent = subtitle
+    ? `Générés le ${subtitle}`
+    : '';
+
+  renderDesktop(state);
+
+  buildSlots(state);
+  currentSlotIndex = findTodaySlotIndex();
+  renderMobileSlot(currentSlotIndex);
+
+  document.getElementById('prev-btn').addEventListener('click', () => {
+    if (currentSlotIndex > 0) { currentSlotIndex--; renderMobileSlot(currentSlotIndex); }
+  });
+  document.getElementById('next-btn').addEventListener('click', () => {
+    if (currentSlotIndex < allSlots.length - 1) { currentSlotIndex++; renderMobileSlot(currentSlotIndex); }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liste de courses</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: #faf8f4;
+      color: #2c2a25;
+      min-height: 100vh;
+      padding: 0 0 80px;
+    }
+
+    header {
+      background: #2c2a25;
+      color: #faf8f4;
+      padding: 20px 24px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: normal;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    header .subtitle {
+      font-size: 0.75rem;
+      opacity: 0.5;
+      margin-top: 2px;
+      font-style: italic;
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 60px 24px;
+      color: #888;
+      font-style: italic;
+    }
+
+    /* ---- SECTIONS ---- */
+    .section {
+      margin: 0;
+      border-bottom: 1px solid #e8e4dc;
+    }
+
+    .section-title {
+      font-size: 0.65rem;
+      font-weight: normal;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #888;
+      padding: 16px 20px 8px;
+      background: #f3f0ea;
+      border-bottom: 1px solid #e8e4dc;
+      position: sticky;
+      top: 73px;
+      z-index: 5;
+    }
+
+    /* ---- ITEMS ---- */
+    .shopping-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f0ece4;
+      transition: background 0.15s;
+      gap: 12px;
+    }
+
+    .shopping-item:last-child {
+      border-bottom: none;
+    }
+
+    .shopping-item.checked {
+      opacity: 0.35;
+    }
+
+    .shopping-item.checked .item-label {
+      text-decoration: line-through;
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .item-check {
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid #c8c2b4;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .shopping-item.checked .item-check {
+      background: #2c2a25;
+      border-color: #2c2a25;
+    }
+
+    .item-check::after {
+      content: '';
+      display: none;
+      width: 5px;
+      height: 9px;
+      border: 2px solid #faf8f4;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+    }
+
+    .shopping-item.checked .item-check::after {
+      display: block;
+    }
+
+    .item-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      width: 24px;
+      text-align: center;
+    }
+
+    .item-icon img {
+      width: 20px;
+      height: 20px;
+      vertical-align: middle;
+    }
+
+    .item-label {
+      font-size: 0.95rem;
+      color: #2c2a25;
+    }
+
+    .item-count {
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-left: 4px;
+    }
+
+    /* ---- POPUP ---- */
+    #recipe-popup {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: flex-end;
+    }
+
+    #recipe-popup.visible {
+      display: flex;
+    }
+
+    .popup-inner {
+      background: #faf8f4;
+      width: 100%;
+      max-height: 60vh;
+      border-radius: 16px 16px 0 0;
+      padding: 24px 24px 40px;
+      overflow-y: auto;
+    }
+
+    .popup-handle {
+      width: 36px;
+      height: 4px;
+      background: #ccc;
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .popup-inner h3 {
+      font-size: 1rem;
+      font-weight: normal;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+      color: #2c2a25;
+      text-transform: uppercase;
+    }
+
+    .popup-inner ul {
+      list-style: none;
+    }
+
+    .popup-inner ul li {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0ece4;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .popup-inner ul li:last-child {
+      border-bottom: none;
+    }
+
+    /* ---- LEGEND ---- */
+    .legend {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #bbb;
+      padding: 24px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Liste de courses</h1>
+    <div class="subtitle" id="header-subtitle">Chargement…</div>
+  </div>
+</header>
+
+<div id="list-container"></div>
+<div class="legend" id="legend"></div>
+
+<!-- POPUP recettes -->
+<div id="recipe-popup">
+  <div class="popup-inner">
+    <div class="popup-handle"></div>
+    <h3 id="popup-title"></h3>
+    <ul id="popup-ingredients"></ul>
+  </div>
+</div>
+
+<script>
+const popup = document.getElementById('recipe-popup');
+popup.addEventListener('click', (e) => {
+  if (e.target === popup) popup.classList.remove('visible');
+});
+
+function showRecipesPopup(ingredientName, recipes) {
+  document.getElementById('popup-title').textContent = ingredientName;
+  const list = document.getElementById('popup-ingredients');
+  list.innerHTML = '';
+
+  recipes.forEach(r => {
+    const li = document.createElement('li');
+    if (r.icon) li.innerHTML = `${r.icon} `;
+    li.appendChild(document.createTextNode(r.name));
+    list.appendChild(li);
+  });
+
+  popup.classList.add('visible');
+}
+
+function renderShopping(shopping) {
+  const container = document.getElementById('list-container');
+  container.innerHTML = '';
+
+  const sortedLieux = Object.keys(shopping).sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
+
+  if (!sortedLieux.length) {
+    container.innerHTML = '<div class="error-msg">Aucun ingrédient dans cette liste.</div>';
+    return;
+  }
+
+  let total = 0;
+
+  sortedLieux.forEach(lieu => {
+    const section = document.createElement('div');
+    section.classList.add('section');
+
+    const title = document.createElement('div');
+    title.classList.add('section-title');
+    title.textContent = lieu.length > 3 ? lieu.slice(3) : lieu;
+    section.appendChild(title);
+
+    Object.entries(shopping[lieu]).forEach(([ing, data]) => {
+      total++;
+      const row = document.createElement('div');
+      row.classList.add('shopping-item');
+
+      // Checkbox
+      const check = document.createElement('div');
+      check.classList.add('item-check');
+      check.addEventListener('click', () => {
+        row.classList.toggle('checked');
+      });
+
+      // Left zone (icon + label) → opens popup
+      const left = document.createElement('div');
+      left.classList.add('item-left');
+      left.addEventListener('click', () => {
+        showRecipesPopup(ing, data.recipes || []);
+      });
+
+      // Icon
+      const iconEl = document.createElement('span');
+      iconEl.classList.add('item-icon');
+      if (data.icon) {
+        if (data.icon.startsWith('http')) {
+          iconEl.innerHTML = `<img src="${data.icon}" alt="">`;
+        } else {
+          iconEl.textContent = data.icon;
+        }
+      }
+
+      // Label
+      const label = document.createElement('span');
+      label.classList.add('item-label');
+      label.textContent = ing;
+
+      if (data.count > 1) {
+        const cnt = document.createElement('span');
+        cnt.classList.add('item-count');
+        cnt.textContent = `×${data.count}`;
+        label.appendChild(cnt);
+      }
+
+      left.appendChild(iconEl);
+      left.appendChild(label);
+
+      row.appendChild(check);
+      row.appendChild(left);
+      section.appendChild(row);
+    });
+
+    container.appendChild(section);
+  });
+
+  document.getElementById('legend').textContent = `${total} ingrédients · Appuyez sur un ingrédient pour voir les recettes`;
+}
+
+// ---- INIT ----
+function init() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) {
+    document.getElementById('list-container').innerHTML =
+      '<div class="error-msg">Lien invalide ou données manquantes.</div>';
+    document.getElementById('header-subtitle').textContent = '';
+    return;
+  }
+
+  let state;
+  try {
+    const json = LZString.decompressFromEncodedURIComponent(hash);
+    state = JSON.parse(json);
+  } catch (e) {
+    document.getElementById('list-container').innerHTML =
+      '<div class="error-msg">Impossible de lire les données du lien.</div>';
+    return;
+  }
+
+  // state = { shopping: {...}, generatedAt: "..." }
+  const subtitle = state.generatedAt
+    ? `Générée le ${state.generatedAt}`
+    : 'Liste de courses';
+  document.getElementById('header-subtitle').textContent = subtitle;
+
+  renderShopping(state.shopping || {});
+}
+
+init();
+</script>
+</body>
+</html>
