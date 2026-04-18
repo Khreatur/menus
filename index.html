@@ -7,7 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
-  <script src="app.js"></script>
 
 </head>
 
@@ -18,8 +17,12 @@
     <img src="/loader.gif" alt="Chargement..." />
     </div>
     <!-- Conteneur principal -->
-    <div id="weeks-container"></div>
+<div id="weeks-wrapper">
+  <div id="weeks-container"></div>
+  <div id="add-week-container">
+    <button id="add-week-btn">+</button>
   </div>
+</div>
 <!-- Pop-in ingrédients -->
 <div id="recipe-popup" class="hidden">
   <div class="popup-content">

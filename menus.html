@@ -1,17 +1,46 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Menus</title>
-   <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
- 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      background: #faf9f6;
+      color: #2c2c2c;
+      min-height: 100vh;
+    }
+
+    /* ---- HEADER ---- */
+    header {
+      background: #3a3028;
+      color: #f0ece3;
+      padding: 16px 24px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f0ece3;
+    }
+
+    header .subtitle {
+      font-size: 0.72rem;
+      opacity: 0.55;
+      font-style: italic;
+    }
 
     .error-msg {
       text-align: center;
@@ -21,35 +50,44 @@
     }
 
     /* =========================================
-       DESKTOP — CALENDAR GRID
+       DESKTOP — GRILLE CALENDRIER
     ========================================= */
     @media (min-width: 769px) {
       #mobile-view { display: none; }
 
       #desktop-view {
         display: block;
-        padding: 32px 24px;
+        padding: 28px 24px;
         overflow-x: auto;
       }
 
-      .week-block {
-        margin-bottom: 40px;
-      }
+      /* Bloc semaine */
+      .week-block { margin-bottom: 36px; }
 
       .week-title {
-        font-size: 0.7rem;
-        letter-spacing: 0.15em;
+        background: #3a3028;
+        color: #f0ece3;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.72rem;
+        font-weight: 700;
         text-transform: uppercase;
-        color: #999;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #e8e4dc;
+        letter-spacing: 0.08em;
+        padding: 8px 14px;
+        border-radius: 8px 8px 0 0;
+        margin-bottom: 0;
       }
 
+      /* Grille jours */
       .calendar-grid {
         display: grid;
         grid-template-columns: repeat(6, 1fr);
         gap: 8px;
+        padding: 12px 0;
+        border: 1px solid #e0dbd0;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 12px;
+        background: #faf9f6;
       }
 
       .day-col {
@@ -60,84 +98,93 @@
 
       .day-col-header {
         font-size: 0.65rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #aaa;
-        text-align: center;
-        padding-bottom: 6px;
-        border-bottom: 1px solid #ece9e2;
-      }
-
-      .meal-slot {
-        background: white;
-        border: 1px solid #ece9e2;
-        border-radius: 8px;
-        padding: 10px 12px;
-        min-height: 72px;
-        position: relative;
-      }
-
-      .meal-badge {
-        font-size: 0.6rem;
+        font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #bbb;
-        display: block;
-        margin-bottom: 6px;
+        color: #5a5248;
+        text-align: center;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #e8e3d8;
       }
 
-      .meal-badge.midi { color: #c8913a; }
-      .meal-badge.soir { color: #6a8fb5; }
+      /* Colonne aujourd'hui */
+      .today-col .day-col-header {
+        color: #3a3028;
+        font-weight: 700;
+      }
 
+      .today-col .meal-slot {
+        border-color: #856404;
+        background: #fffbf0;
+      }
+
+      /* Créneau repas */
+      .meal-slot {
+        background: white;
+        border: 1px solid #e8e3d8;
+        border-radius: 8px;
+        padding: 8px 10px;
+        min-height: 68px;
+      }
+
+      /* Badges midi / soir — alignés sur style.css */
+      .meal-badge {
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 20px;
+        margin-bottom: 5px;
+      }
+
+      .meal-badge.midi { background: #fff3cd; color: #856404; }
+      .meal-badge.soir { background: #e8eaf6; color: #3949ab; }
+
+      /* Chips recettes */
       .recipe-chip {
         display: flex;
         align-items: flex-start;
         gap: 5px;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         line-height: 1.35;
-        color: #2c2a25;
+        color: #2c2c2c;
         margin-bottom: 4px;
       }
 
-      .recipe-icon {
-        flex-shrink: 0;
-        font-size: 1rem;
+      .recipe-icon { flex-shrink: 0; font-size: 0.9rem; }
+
+      .recipe-chip span[style*="cursor"] {
+        color: #2c2c2c;
+      }
+
+      .recipe-chip span[style*="cursor"]:hover {
+        text-decoration: underline;
+        color: #3a3028;
       }
 
       .empty-slot {
-        color: #ddd;
-        font-size: 0.8rem;
+        color: #d0c9bf;
+        font-size: 0.78rem;
         font-style: italic;
-      }
-
-      .today-col .day-col-header {
-        color: #2c2a25;
-        font-weight: bold;
-      }
-
-      .today-col .meal-slot {
-        border-color: #c8913a;
-        background: #fffbf5;
       }
     }
 
     /* =========================================
-       MOBILE — DAY VIEW
+       MOBILE — VUE PAR CRÉNEAU
     ========================================= */
     @media (max-width: 768px) {
       #desktop-view { display: none; }
-
-      #mobile-view {
-        display: block;
-      }
+      #mobile-view { display: block; }
 
       .mobile-nav {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 14px 20px;
-        background: #f3f0ea;
-        border-bottom: 1px solid #e8e4dc;
+        background: #f0ece3;
+        border-bottom: 1px solid #e8e3d8;
         position: sticky;
         top: 0;
         z-index: 10;
@@ -148,111 +195,149 @@
         border: none;
         font-size: 1.4rem;
         cursor: pointer;
-        color: #2c2a25;
+        color: #3a3028;
         padding: 4px 8px;
         opacity: 0.7;
       }
 
-      .nav-btn:disabled {
-        opacity: 0.2;
-      }
+      .nav-btn:disabled { opacity: 0.2; }
 
-      .nav-day-label {
-        text-align: center;
-        flex: 1;
-      }
+      .nav-day-label { text-align: center; flex: 1; }
 
       .nav-day-label .day-name {
+        font-family: 'Poppins', sans-serif;
         font-size: 0.9rem;
-        font-weight: normal;
-        letter-spacing: 0.05em;
-        color: #2c2a25;
+        font-weight: 600;
+        color: #3a3028;
       }
 
       .nav-day-label .week-name {
         font-size: 0.7rem;
-        color: #aaa;
+        color: #5a5248;
         margin-top: 2px;
         font-style: italic;
       }
 
-      .mobile-day-content {
-        padding: 24px 20px;
-      }
-
-      .mobile-meal-block {
-        margin-bottom: 24px;
-      }
+      .mobile-day-content { padding: 24px 20px; }
+      .mobile-meal-block { margin-bottom: 24px; }
 
       .mobile-meal-label {
+        font-family: 'Poppins', sans-serif;
         font-size: 0.65rem;
-        letter-spacing: 0.15em;
+        font-weight: 700;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         margin-bottom: 10px;
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
       }
 
-      .mobile-meal-label.midi { color: #c8913a; }
-      .mobile-meal-label.soir { color: #6a8fb5; }
+      .mobile-meal-label.midi { background: #fff3cd; color: #856404; }
+      .mobile-meal-label.soir { background: #e8eaf6; color: #3949ab; }
 
       .mobile-recipe {
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        padding: 14px 16px;
+        padding: 12px 14px;
         background: white;
-        border: 1px solid #ece9e2;
-        border-radius: 10px;
+        border: 1px solid #e8e3d8;
+        border-radius: 8px;
         margin-bottom: 8px;
       }
 
-      .mobile-recipe-icon {
-        font-size: 1.4rem;
-        flex-shrink: 0;
-      }
-
-      .mobile-recipe-icon img {
-        width: 28px;
-        height: 28px;
-      }
+      .mobile-recipe-icon { font-size: 1.3rem; flex-shrink: 0; }
+      .mobile-recipe-icon img { width: 26px; height: 26px; }
 
       .mobile-recipe-name {
-        font-size: 0.95rem;
-        color: #2c2a25;
+        font-size: 0.9rem;
+        color: #2c2c2c;
         line-height: 1.4;
         padding-top: 2px;
+        cursor: pointer;
       }
 
+      .mobile-recipe-name:hover { text-decoration: underline; }
+
       .mobile-empty {
-        color: #ccc;
+        color: #c8bfb0;
         font-style: italic;
         font-size: 0.85rem;
         padding: 10px 0;
       }
 
       .today-banner {
-        background: #c8913a;
+        background: #856404;
         color: white;
         text-align: center;
-        font-size: 0.7rem;
-        letter-spacing: 0.12em;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         padding: 6px;
       }
     }
+
+    /* ---- POPUP INGRÉDIENTS ---- */
+    #recipe-popup {
+      position: fixed;
+      inset: 0;
+      background: rgba(58,48,40,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #recipe-popup.open { display: flex; }
+
+    .popup-box {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 380px;
+      width: 90%;
+      max-height: 70vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(58,48,40,0.2);
+    }
+
+    .popup-box h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #3a3028;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    .popup-box ul { list-style: none; padding: 0; margin: 0; }
+
+    .popup-box ul li {
+      padding: 8px 0;
+      border-bottom: 1px solid #f0ece3;
+      font-size: 0.88rem;
+      color: #2c2c2c;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .popup-box ul li:last-child { border-bottom: none; }
   </style>
 </head>
-
 <body>
 
-
+<header>
   <h1>Menus</h1>
   <span class="subtitle" id="header-subtitle">Chargement…</span>
+</header>
 
-
-<!-- DESKTOP -->
 <div id="desktop-view"></div>
 
-<!-- MOBILE -->
 <div id="mobile-view">
   <div class="mobile-nav">
     <button class="nav-btn" id="prev-btn">‹</button>
@@ -266,19 +351,25 @@
   <div class="mobile-day-content" id="mobile-day-content"></div>
 </div>
 
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-// ---- CONSTANTS ----
-const DAYS_ORDER = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
-const DAYS_JS    = [0,1,2,3,4,5]; // correspondance getDay()
+<!-- Popup ingrédients -->
+<div id="recipe-popup">
+  <div class="popup-box">
+    <h3 id="popup-title"></h3>
+    <ul id="popup-ingredients"></ul>
+  </div>
+</div>
 
-// ---- HELPERS ----
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+const DAYS_ORDER = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
+const DAYS_JS    = [0,1,2,3,4,5];
+
 function iconHTML(icon) {
   if (!icon) return '';
-  if (icon.startsWith('http')) return `<img src="${icon}" style="width:20px;height:20px;vertical-align:middle;">`;
+  if (icon.startsWith('http')) return `<img src="${icon}" style="width:18px;height:18px;vertical-align:middle;">`;
   return icon;
 }
-
 function getCurrentDayIndex() {
   // Renvoie l'index dans DAYS_ORDER correspondant à aujourd'hui (dim=0, lun=1… ven=5)
   const d = new Date().getDay(); // 0=dim, 1=lun … 6=sam
@@ -286,16 +377,65 @@ function getCurrentDayIndex() {
   return DAYS_ORDER.findIndex((_, i) => DAYS_JS[i] === d);
 }
 
-// ---- DESKTOP RENDER ----
-function renderDesktop(state) {
+// Remplace getCurrentDayIndex() et son usage dans renderDesktop/renderMobileSlot
 
+// Retourne la date du lundi de la semaine N du payload
+// (le label contient "du 21 avril" — on le parse, ou plus fiable :
+//  on recalcule depuis aujourd'hui comme le fait app.js)
+function getWeekStartDate(weekIndex) {
+  const today = new Date();
+  const daysUntilNextMonday = (8 - today.getDay()) % 7 || 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + daysUntilNextMonday + weekIndex * 7);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+// Retourne la date exacte d'un créneau dans une semaine donnée
+function getSlotDate(weekIndex, dayName) {
+  const DAYS_ORDER = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
+  const dayOffset  = { Dimanche: -1, Lundi: 0, Mardi: 1, Mercredi: 2, Jeudi: 3, Vendredi: 4 };
+  const monday = getWeekStartDate(weekIndex);
+  const d = new Date(monday);
+  d.setDate(monday.getDate() + dayOffset[dayName]);
+  return d;
+}
+
+// Vérifie si une date est aujourd'hui
+function isToday(date) {
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear()
+      && date.getMonth()    === now.getMonth()
+      && date.getDate()     === now.getDate();
+}
+
+// ---- POPUP ----
+const popupEl = document.getElementById('recipe-popup');
+popupEl.addEventListener('click', e => { if (e.target === popupEl) popupEl.classList.remove('open'); });
+
+function showIngredients(recipe) {
+  document.getElementById('popup-title').textContent = recipe.name || "Sans nom";
+  const list = document.getElementById('popup-ingredients');
+  list.innerHTML = '';
+  (recipe.ingredients || []).forEach(ing => {
+    const li = document.createElement('li');
+    if (ing.icon) {
+      const ico = document.createElement('span');
+      ico.innerHTML = ing.icon.startsWith('http')
+        ? `<img src="${ing.icon}" style="width:18px;margin-right:4px;vertical-align:middle;">` : ing.icon;
+      li.appendChild(ico);
+    }
+    li.appendChild(document.createTextNode(ing.name));
+    list.appendChild(li);
+  });
+  popupEl.classList.add('open');
+}
+
+// ---- DESKTOP ----
+function renderDesktop(state) {
   const container = document.getElementById('desktop-view');
   container.innerHTML = '';
-
-  const todayIndex = getCurrentDayIndex(); // 0-5 propre
-  const todayName = DAYS_ORDER[todayIndex] || '';
-
-
+  const todayIndex = getCurrentDayIndex();
 
   state.weeks.forEach((week, wi) => {
     const block = document.createElement('div');
@@ -309,16 +449,11 @@ function renderDesktop(state) {
     const grid = document.createElement('div');
     grid.classList.add('calendar-grid');
 
-DAYS_ORDER.forEach((dayName, di) => {
-  const col = document.createElement('div');
-  col.classList.add('day-col');
-
-  // highlight uniquement si jour correspond ET semaine existe
-  if (di === todayIndex && state.weeks.length > 0) {
-    col.classList.add('today-col');
-  }
-
-
+    DAYS_ORDER.forEach((dayName, di) => {
+      const col = document.createElement('div');
+      col.classList.add('day-col');
+      const slotDate = getSlotDate(wi, dayName);
+      if (isToday(slotDate)) col.classList.add('today-col');
 
       const hdr = document.createElement('div');
       hdr.classList.add('day-col-header');
@@ -334,8 +469,7 @@ DAYS_ORDER.forEach((dayName, di) => {
         badge.textContent = meal;
         slot.appendChild(badge);
 
-        const key = `${dayName}_${meal}`;
-        const recipes = week.meals[key] || [];
+        const recipes = (week.meals || {})[`${dayName}_${meal}`] || [];
 
         if (!recipes.length) {
           const empty = document.createElement('span');
@@ -351,8 +485,7 @@ DAYS_ORDER.forEach((dayName, di) => {
             ico.innerHTML = iconHTML(r.icon);
             const name = document.createElement('span');
             name.textContent = r.name;
-            name.style.cursor = "pointer";
-
+            name.style.cursor = 'pointer';
             name.onclick = () => showIngredients(r);
             chip.appendChild(ico);
             chip.appendChild(name);
@@ -371,21 +504,19 @@ DAYS_ORDER.forEach((dayName, di) => {
   });
 }
 
-// ---- MOBILE RENDER ----
-let allSlots = []; // [{weekLabel, dayName, meal, recipes}] dans l'ordre
-let currentSlotIndex = 0;
+// ---- MOBILE ----
+let allSlots = [], currentSlotIndex = 0;
 
 function buildSlots(state) {
   allSlots = [];
   state.weeks.forEach(week => {
     DAYS_ORDER.forEach(dayName => {
       ['midi','soir'].forEach(meal => {
-        const key = `${dayName}_${meal}`;
         allSlots.push({
           weekLabel: week.label,
           dayName,
           meal,
-          recipes: week.meals[key] || []
+          recipes: (week.meals || {})[`${dayName}_${meal}`] || []
         });
       });
     });
@@ -398,14 +529,11 @@ function renderMobileSlot(idx) {
 
   document.getElementById('nav-day-name').textContent = `${slot.dayName} ${slot.meal}`;
   document.getElementById('nav-week-name').textContent = slot.weekLabel;
-
   document.getElementById('prev-btn').disabled = idx === 0;
   document.getElementById('next-btn').disabled = idx === allSlots.length - 1;
 
-  // Today banner
   const todayDay = DAYS_ORDER[getCurrentDayIndex()];
-  const isToday = slot.dayName === todayDay;
-  document.getElementById('today-banner').style.display = isToday ? 'block' : 'none';
+  document.getElementById('today-banner').style.display = 'none';
 
   const content = document.getElementById('mobile-day-content');
   content.innerHTML = '';
@@ -427,18 +555,13 @@ function renderMobileSlot(idx) {
     slot.recipes.forEach(r => {
       const div = document.createElement('div');
       div.classList.add('mobile-recipe');
-
       const ico = document.createElement('span');
       ico.classList.add('mobile-recipe-icon');
       ico.innerHTML = iconHTML(r.icon);
-
       const name = document.createElement('span');
       name.classList.add('mobile-recipe-name');
       name.textContent = r.name;
-      name.style.cursor = "pointer";
-
       name.onclick = () => showIngredients(r);
-
       div.appendChild(ico);
       div.appendChild(name);
       block.appendChild(div);
@@ -447,98 +570,48 @@ function renderMobileSlot(idx) {
 
   content.appendChild(block);
 }
-function showIngredients(recipe) {
-  const title = recipe.name || "Sans nom";
-  const ingredients = recipe.ingredients || [];
 
-  document.getElementById("popup-title").textContent = title;
-
-  const list = document.getElementById("popup-ingredients");
-  list.innerHTML = "";
-
-  ingredients.forEach(ing => {
-    const li = document.createElement("li");
-
-    let icon = "";
-    if (ing.icon) {
-      if (ing.icon.startsWith("http")) {
-        icon = `<img src="${ing.icon}" style="width:18px;margin-right:6px;vertical-align:middle;">`;
-      } else {
-        icon = `${ing.icon} `;
-      }
-    }
-
-    li.innerHTML = `${icon}${ing.name}`;
-    list.appendChild(li);
+function findTodaySlotIndex() {
+  const meal = new Date().getHours() < 14 ? 'midi' : 'soir';
+  // Cherche le slot dont la date correspond à aujourd'hui
+  const idx = allSlots.findIndex((s, i) => {
+    const weekIndex = Math.floor(i / (DAYS_ORDER.length * 2));
+    const slotDate  = getSlotDate(weekIndex, s.dayName);
+    return isToday(slotDate) && s.meal === meal;
   });
-
-  document.getElementById("recipe-popup").style.display = "flex";
+  return idx; // -1 si aucun match (semaine pas encore commencée)
 }
-
 
 // ---- INIT ----
-function findTodaySlotIndex() {
-  const now = new Date();
-
-  const todayDay = DAYS_ORDER[getCurrentDayIndex()];
-  const isMorning = now.getHours() < 14;
-  const meal = isMorning ? 'midi' : 'soir';
-
-  // On cherche SANS se soucier de la semaine
-  const idx = allSlots.findIndex(s =>
-    s.dayName === todayDay &&
-    s.meal === meal
-  );
-
-  return idx; // peut être -1
-}
-function getCurrentWeekLabel(state) {
-  const now = new Date();
-
-  const day = now.getDay();
-  const daysUntilNextMonday = (8 - day) % 7 || 7;
-
-  const nextMonday = new Date(now);
-  nextMonday.setDate(now.getDate() + daysUntilNextMonday);
-
-  const options = { day: "numeric", month: "long" };
-  return `Semaine 1 — du ${nextMonday.toLocaleDateString("fr-FR", options)}`;
-}
 function init() {
   const hash = window.location.hash.slice(1);
   if (!hash) {
-    document.getElementById('desktop-view').innerHTML =
-      '<div class="error-msg">Lien invalide ou données manquantes.</div>';
+    document.getElementById('desktop-view').innerHTML = '<div class="error-msg">Lien invalide ou données manquantes.</div>';
     document.getElementById('mobile-view').style.display = 'none';
     return;
   }
 
   let state;
   try {
-    const json = LZString.decompressFromEncodedURIComponent(hash);
-    state = JSON.parse(json);
+    state = JSON.parse(LZString.decompressFromEncodedURIComponent(hash));
   } catch (e) {
-    document.getElementById('desktop-view').innerHTML =
-      '<div class="error-msg">Impossible de lire les données du lien.</div>';
+    document.getElementById('desktop-view').innerHTML = '<div class="error-msg">Impossible de lire les données du lien.</div>';
     return;
   }
 
-  const subtitle = state.generatedAt || '';
-  document.getElementById('header-subtitle').textContent = subtitle
-    ? `Générés le ${subtitle}`
-    : '';
+  document.getElementById('header-subtitle').textContent = state.generatedAt ? `Générés le ${state.generatedAt}` : '';
 
   renderDesktop(state);
-
   buildSlots(state);
   currentSlotIndex = findTodaySlotIndex();
-
-if (currentSlotIndex >= 0) {
-  renderMobileSlot(currentSlotIndex);
-} else {
-  // aucun match → aucun highlight logique
-  renderMobileSlot(0);
-}
+  if (currentSlotIndex >= 0) {
+    renderMobileSlot(currentSlotIndex);
+  } else {
+    // Afficher un message "semaine pas encore commencée"
+    renderMobileSlot(0); // affiche le premier créneau par défaut
+    document.getElementById('today-banner').style.display = 'block';
+    document.getElementById('today-banner').textContent   = 'La semaine n\'a pas encore commencé';
+  }
 
   document.getElementById('prev-btn').addEventListener('click', () => {
     if (currentSlotIndex > 0) { currentSlotIndex--; renderMobileSlot(currentSlotIndex); }
@@ -549,35 +622,7 @@ if (currentSlotIndex >= 0) {
 }
 
 init();
-  const popup = document.getElementById("recipe-popup");
-
-  if (popup) {
-    popup.onclick = () => {
-      popup.style.display = "none";
-    };
-  }
-
 });
 </script>
-<div id="recipe-popup" style="
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:1000;
-">
-  <div style="
-    background:white;
-    padding:20px;
-    border-radius:10px;
-    max-width:400px;
-    width:90%;
-  ">
-    <h3 id="popup-title" style="margin-bottom:10px;"></h3>
-    <ul id="popup-ingredients" style="line-height:1.6;"></ul>
-  </div>
-</div>
 </body>
 </html>

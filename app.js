@@ -438,13 +438,6 @@ function createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer) {
   weekHeader.classList.add("week-header");
   weekHeader.textContent = getWeekLabel(w);
 
-  // 👉 bouton "+"
-  const addBtn = document.createElement("button");
-  addBtn.textContent = "+";
-  addBtn.classList.add("add-week-btn");
-  addBtn.onclick = addWeek;
-
-  weekHeader.appendChild(addBtn);
   weekCol.appendChild(weekHeader);
 
   const menuList = document.createElement("div");
@@ -590,98 +583,9 @@ async function initMenu() {
   weeksContainer.innerHTML = "";
   selectedRecipes = {};
 
-  for (let w = 0; w < numWeeks; w++){
-    selectedRecipes[w] = {};
-
-    const weekCol = document.createElement("div");
-    weekCol.classList.add("week-column");
-    weekCol.dataset.week = w;
-
-    const weekHeader = document.createElement("div");
-    weekHeader.classList.add("week-header");
-    weekHeader.textContent = getWeekLabel(w);
-    weekCol.appendChild(weekHeader);
-
-    const menuList = document.createElement("div");
-    menuList.classList.add("menu-list");
-    weekCol.appendChild(menuList);
-    weeksContainer.appendChild(weekCol);
-
-    DAYS_MEALS.forEach((dm, dayIndex) => {
-      const isSundayEvening = dm.day === "Dimanche" && dm.meal === "soir" && CURRENT_SEASON === "Hiver";
-      const recipe = (isSundayEvening && soups.length) ? getRandomRecipe(soups) : getRandomRecipe(recipes);
-
-      selectedRecipes[w][dayIndex] = recipe ? [recipe] : [];
-      if (recipe) excludedRecipeIds.add(recipe.id);
-
-      const div = document.createElement("div");
-      div.classList.add("menu-item");
-      div.dataset.week  = w;
-      div.dataset.index = dayIndex;
-      div.innerHTML = `
-        <div class="day-label">${dm.day} <span class="meal-badge meal-${dm.meal}">${dm.meal}</span></div>
-        <div class="recipes-container"></div>
-        <button class="add-recipe-btn">+ Ajouter</button>
-        <div class="search-recipe-wrapper">
-          <input type="text" class="search-recipe-input" placeholder="Chercher une recette..." />
-          <ul class="search-recipe-dropdown hidden"></ul>
-        </div>
-      `;
-      menuList.appendChild(div);
-
-      const recipesContainer = div.querySelector(".recipes-container");
-
-      // Bouton "+ Ajouter" → pioche aléatoirement
-      div.querySelector(".add-recipe-btn").onclick = () => {
-        const isSE = DAYS_MEALS[dayIndex].day === "Dimanche" &&
-                     DAYS_MEALS[dayIndex].meal === "soir" &&
-                     getCurrentSeason() === "Hiver";
-        const newRecipe = getRandomRecipe(isSE ? allRecipesCache.filter(isSoup) : allRecipesCache);
-        if (!newRecipe) { alert("Plus de recettes disponibles"); return; }
-        excludedRecipeIds.add(newRecipe.id);
-        selectedRecipes[w][dayIndex].push(newRecipe);
-        addRecipeLine(recipesContainer, newRecipe, w, dayIndex);
-      };
-
-      // Recherche textuelle avec dropdown
-      const searchInput = div.querySelector(".search-recipe-input");
-      const dropdown    = div.querySelector(".search-recipe-dropdown");
-
-      searchInput.addEventListener("input", () => {
-        const query = normalize(searchInput.value);
-        dropdown.innerHTML = "";
-        if (!query) { dropdown.classList.add("hidden"); return; }
-
-        const matches = allRecipesCache.filter(r =>
-          normalize(r.properties?.Nom?.title?.[0]?.plain_text || "").includes(query)
-        );
-        if (!matches.length) { dropdown.classList.add("hidden"); return; }
-
-        matches.forEach(r => {
-          const li    = document.createElement("li");
-          const name  = r.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
-          const emoji = r.icon?.type === "emoji" ? r.icon.emoji + " " : "";
-          li.textContent = emoji + name;
-          li.addEventListener("mousedown", () => {
-            selectedRecipes[w][dayIndex].push(r);
-            excludedRecipeIds.add(r.id);
-            addRecipeLine(recipesContainer, r, w, dayIndex);
-            searchInput.value = "";
-            dropdown.classList.add("hidden");
-          });
-          dropdown.appendChild(li);
-        });
-        dropdown.classList.remove("hidden");
-      });
-
-      searchInput.addEventListener("blur", () => {
-        setTimeout(() => dropdown.classList.add("hidden"), 150);
-      });
-
-      // Afficher les recettes initiales
-      selectedRecipes[w][dayIndex].forEach(r => addRecipeLine(recipesContainer, r, w, dayIndex));
-    });
-  }
+  for (let w = 0; w < numWeeks; w++) {
+  createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer);
+}
 }
 
 
@@ -918,13 +822,31 @@ function buildShoppingPayload(shopping, iconsMap) {
 function buildMenusPayload() {
   const weeks = [];
 
-for (let w = 0; w < numWeeks; w++) {
-  createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer);
-}
+  for (let w = 0; w < numWeeks; w++) {
+    if (!selectedRecipes[w]) continue;
+    const meals = {};
+
+    DAYS_MEALS.forEach((dm, dayIndex) => {
+      const key     = `${dm.day}_${dm.meal}`;
+      const recipes = (selectedRecipes[w][dayIndex] || []).filter(Boolean);
+      meals[key] = recipes.map(r => ({
+        name: r?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom",
+        icon: extractRecipeIconValue(r.icon),
+        ingredients: (r?.properties?.Ingredients || []).map(i => ({
+          name: i.name,
+          icon: ingredientMap?.[i.name] || null
+        }))
+      }));
+    });
+
+    weeks.push({ label: getWeekLabel(w), meals });
+  }
 
   return {
     weeks,
-    generatedAt: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    generatedAt: new Date().toLocaleDateString("fr-FR", {
+      day: "numeric", month: "long", year: "numeric"
+    })
   };
 }
 
@@ -1035,5 +957,6 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
 document.getElementById("generate-links-btn").addEventListener("click", generateLinks);
 
 startApp();
+document.getElementById("add-week-btn").addEventListener("click", addWeek);
 
 }); // fin DOMContentLoaded
