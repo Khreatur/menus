@@ -613,3 +613,15 @@ h1 {
   gap: 12px;
   margin-top: 20px;
 }
+.shopping-week-subtitle {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #aaa;
+  margin: 12px 0 4px;
+  padding-left: 2px;
+}
+ 
+.shopping-section {
+  margin-bottom: 24px;
+}
