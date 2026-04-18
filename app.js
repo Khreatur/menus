@@ -1311,8 +1311,8 @@ requestAnimationFrame(() => {
 });
 
   // 👉 afficher bouton copier après tri
-  const copyBtn = document.getElementById("send-mail-btn");
-  copyBtn.style.display = "inline-block";
+const copyBtn = document.getElementById("send-mail-btn");
+if (copyBtn) copyBtn.style.display = "inline-block";
 });
 document.getElementById('generate-links-btn').addEventListener('click', generateLinks);
 });
