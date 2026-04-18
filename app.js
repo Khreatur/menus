@@ -23,7 +23,7 @@ const DAYS_MEALS = [
   { day: "Vendredi", meal: "soir" },
 ];
 
-const NUM_WEEKS = 4;
+let numWeeks = 2;
 
 
 // ============================================================
@@ -273,7 +273,7 @@ function findClosestRecipe(spokenText, recipes) {
 // Retourne l'ensemble des repas sélectionnés pour toutes les semaines
 function getAllSelectedRecipesForMail() {
   const all = [];
-  for (let w = 0; w < NUM_WEEKS; w++) {
+  for (let w = 0; w < numWeeks; w++)
     if (!selectedRecipes[w]) continue;
     const weekLabel = getWeekLabel(w);
     DAYS_MEALS.forEach((dm, dayIndex) => {
@@ -426,6 +426,95 @@ function showRecipesUsingIngredient(ingredient, recipes) {
 // MENU — AFFICHAGE ET INTERACTIONS
 // ============================================================
 
+// gestion de bloc de semaines
+function createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer) {
+  selectedRecipes[w] = {};
+
+  const weekCol = document.createElement("div");
+  weekCol.classList.add("week-column");
+  weekCol.dataset.week = w;
+
+  const weekHeader = document.createElement("div");
+  weekHeader.classList.add("week-header");
+  weekHeader.textContent = getWeekLabel(w);
+
+  // 👉 bouton "+"
+  const addBtn = document.createElement("button");
+  addBtn.textContent = "+";
+  addBtn.classList.add("add-week-btn");
+  addBtn.onclick = addWeek;
+
+  weekHeader.appendChild(addBtn);
+  weekCol.appendChild(weekHeader);
+
+  const menuList = document.createElement("div");
+  menuList.classList.add("menu-list");
+  weekCol.appendChild(menuList);
+
+  weeksContainer.appendChild(weekCol);
+
+  DAYS_MEALS.forEach((dm, dayIndex) => {
+    const isSundayEvening =
+      dm.day === "Dimanche" &&
+      dm.meal === "soir" &&
+      CURRENT_SEASON === "Hiver";
+
+    const recipe = (isSundayEvening && soups.length)
+      ? getRandomRecipe(soups)
+      : getRandomRecipe(recipes);
+
+    selectedRecipes[w][dayIndex] = recipe ? [recipe] : [];
+    if (recipe) excludedRecipeIds.add(recipe.id);
+
+    const div = document.createElement("div");
+    div.classList.add("menu-item");
+    div.dataset.week = w;
+    div.dataset.index = dayIndex;
+
+    div.innerHTML = `
+      <div class="day-label">${dm.day} <span class="meal-badge meal-${dm.meal}">${dm.meal}</span></div>
+      <div class="recipes-container"></div>
+      <button class="add-recipe-btn">+ Ajouter</button>
+      <div class="search-recipe-wrapper">
+        <input type="text" class="search-recipe-input" placeholder="Chercher une recette..." />
+        <ul class="search-recipe-dropdown hidden"></ul>
+      </div>
+    `;
+
+    menuList.appendChild(div);
+
+    const recipesContainer = div.querySelector(".recipes-container");
+
+    // bouton ajouter recette
+    div.querySelector(".add-recipe-btn").onclick = () => {
+      const newRecipe = getRandomRecipe(recipes);
+      if (!newRecipe) return;
+      selectedRecipes[w][dayIndex].push(newRecipe);
+      excludedRecipeIds.add(newRecipe.id);
+      addRecipeLine(recipesContainer, newRecipe, w, dayIndex);
+    };
+
+    selectedRecipes[w][dayIndex].forEach(r =>
+      addRecipeLine(recipesContainer, r, w, dayIndex)
+    );
+  });
+}
+
+// bouton d'ajout de semaines
+function addWeek() {
+  const weeksContainer = document.getElementById("weeks-container");
+
+  const CURRENT_SEASON = getCurrentSeason();
+  const recipes = allRecipesCache;
+  const soups = recipes.filter(isSoup);
+
+  const newIndex = numWeeks;
+
+  createWeekColumn(newIndex, recipes, soups, CURRENT_SEASON, weeksContainer);
+
+  numWeeks++;
+}
+
 // Met à jour le bloc visuel d'une recette (icône + nom)
 function updateRecipeBlock(block, recipe) {
   block.querySelector(".icon-recette").innerHTML =
@@ -501,7 +590,7 @@ async function initMenu() {
   weeksContainer.innerHTML = "";
   selectedRecipes = {};
 
-  for (let w = 0; w < NUM_WEEKS; w++) {
+  for (let w = 0; w < numWeeks; w++)
     selectedRecipes[w] = {};
 
     const weekCol = document.createElement("div");
@@ -829,25 +918,9 @@ function buildShoppingPayload(shopping, iconsMap) {
 function buildMenusPayload() {
   const weeks = [];
 
-  for (let w = 0; w < NUM_WEEKS; w++) {
-    if (!selectedRecipes[w]) continue;
-    const meals = {};
-
-    DAYS_MEALS.forEach((dm, dayIndex) => {
-      const key     = `${dm.day}_${dm.meal}`;
-      const recipes = (selectedRecipes[w][dayIndex] || []).filter(Boolean);
-      meals[key] = recipes.map(r => ({
-        name: r?.properties?.Nom?.title?.[0]?.plain_text || "Sans nom",
-        icon: extractRecipeIconValue(r.icon),
-        ingredients: (r?.properties?.Ingredients || []).map(i => ({
-          name: i.name,
-          icon: ingredientMap?.[i.name] || null
-        }))
-      }));
-    });
-
-    weeks.push({ label: getWeekLabel(w), meals });
-  }
+for (let w = 0; w < numWeeks; w++) {
+  createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer);
+}
 
   return {
     weeks,
