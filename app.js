@@ -25,9 +25,6 @@ const DAYS_MEALS = [
 
 const NUM_WEEKS = 4;
 
-const MIC_BLACK_SRC = "mic-noir.png";
-const MIC_GREEN_SRC  = "mic-vert.png";
-
 
 // ============================================================
 // ÉTAT GLOBAL
@@ -295,34 +292,6 @@ function getAllSelectedRecipesForMail() {
 
 
 // ============================================================
-// RECONNAISSANCE VOCALE
-// ============================================================
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const speechSupported   = !!SpeechRecognition;
-
-function listenOnce(onResult, onError) {
-  if (!speechSupported) {
-    onError?.(new Error("Speech recognition not supported"));
-    return;
-  }
-  const recognition = new SpeechRecognition();
-  recognition.lang            = "fr-FR";
-  recognition.interimResults  = false;
-  recognition.maxAlternatives = 1;
-  recognition.onresult = e => onResult(e.results[0][0].transcript);
-  recognition.onerror  = e => onError?.(e.error);
-  recognition.start();
-}
-
-function stopMic(micBtn, micTimeout) {
-  if (micTimeout) clearTimeout(micTimeout);
-  micBtn.src = MIC_BLACK_SRC;
-  micBtn.classList.remove("listening");
-}
-
-
-// ============================================================
 // FETCH API / NOTION
 // ============================================================
 
@@ -473,40 +442,11 @@ function addRecipeLine(container, recipe, weekIndex, dayIndex) {
     <span class="icon-recette"></span>
     <span class="name"></span>
     <div class="recipe-actions">
-      <img src="mic-noir.png" class="icon icon-mic"    title="Dicter une recette" />
       <img src="change.png"   class="icon icon-change" title="Modifier la recette" />
       <img src="trash.PNG"    class="icon icon-trash"  title="Supprimer la recette" />
     </div>
   `;
 
-  const micBtn = line.querySelector(".icon-mic");
-  let micTimeout;
-
-  // Dictée vocale → remplace la recette par la plus proche du texte reconnu
-  micBtn.onclick = (e) => {
-    e.stopPropagation();
-    micBtn.src = MIC_GREEN_SRC;
-    micBtn.classList.add("listening");
-    micTimeout = setTimeout(() => stopMic(micBtn, micTimeout), 8000);
-
-    listenOnce(
-      spokenText => {
-        stopMic(micBtn, micTimeout);
-        const newRecipe = findClosestRecipe(spokenText, allRecipesCache);
-        if (!newRecipe) { alert(`Aucune recette trouvée pour "${spokenText}"`); return; }
-        const idx = selectedRecipes[weekIndex][dayIndex].indexOf(recipe);
-        selectedRecipes[weekIndex][dayIndex][idx] = newRecipe;
-        recipe = newRecipe;
-        updateRecipeBlock(line, recipe);
-        line.querySelector(".name").onclick        = () => showIngredients(recipe);
-        line.querySelector(".icon-recette").onclick = () => showIngredients(recipe);
-      },
-      error => {
-        stopMic(micBtn, micTimeout);
-        console.error("Erreur reconnaissance vocale", error);
-      }
-    );
-  };
 
   // Modifier → pioche une nouvelle recette aléatoire
   line.querySelector(".icon-change").onclick = (e) => {
