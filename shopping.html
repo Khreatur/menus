@@ -224,18 +224,15 @@ body, html {
   </style>
 </head>
 <body>
-
+ 
 <header>
-  <div>
-    <h1>Liste de courses</h1>
-    <div class="subtitle" id="header-subtitle">Chargement…</div>
-  </div>
+  <h1>Liste de courses</h1>
+  <div class="subtitle" id="header-subtitle">Chargement…</div>
 </header>
-
+ 
 <div id="list-container"></div>
 <div class="legend" id="legend"></div>
-
-<!-- POPUP recettes -->
+ 
 <div id="recipe-popup">
   <div class="popup-inner">
     <div class="popup-handle"></div>
@@ -243,136 +240,179 @@ body, html {
     <ul id="popup-ingredients"></ul>
   </div>
 </div>
-
+ 
 <script>
+function isMarche(lieu) {
+  return lieu.toLowerCase().includes("march");
+}
+ 
+// ---- POPUP ----
 const popup = document.getElementById('recipe-popup');
-popup.addEventListener('click', (e) => {
+popup.addEventListener('click', e => {
   if (e.target === popup) popup.classList.remove('visible');
 });
-
+ 
 function showRecipesPopup(ingredientName, recipes) {
   document.getElementById('popup-title').textContent = ingredientName;
   const list = document.getElementById('popup-ingredients');
   list.innerHTML = '';
-
+ 
   recipes.forEach(r => {
     const li = document.createElement('li');
-    if (r.icon) li.innerHTML = `${r.icon} `;
-    li.appendChild(document.createTextNode(r.name));
+ 
+    if (r.icon) {
+      const ico = document.createElement('span');
+      ico.innerHTML = r.icon.startsWith('http')
+        ? `<img src="${r.icon}" style="width:18px;height:18px;vertical-align:middle;">`
+        : r.icon;
+      li.appendChild(ico);
+    }
+ 
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = r.name;
+    li.appendChild(nameSpan);
+ 
+    if (r.day) {
+      const daySpan = document.createElement('span');
+      daySpan.classList.add('popup-recipe-day');
+      daySpan.textContent = r.day;
+      li.appendChild(daySpan);
+    }
+ 
     list.appendChild(li);
   });
-
+ 
   popup.classList.add('visible');
 }
-
+ 
+// ---- RENDER ROW ----
+function buildRow(ing, data) {
+  const row = document.createElement('div');
+  row.classList.add('shopping-item');
+ 
+  const check = document.createElement('div');
+  check.classList.add('item-check');
+  check.addEventListener('click', () => row.classList.toggle('checked'));
+ 
+  const left = document.createElement('div');
+  left.classList.add('item-left');
+  left.addEventListener('click', () => showRecipesPopup(ing, data.recipes || []));
+ 
+  const iconEl = document.createElement('span');
+  iconEl.classList.add('item-icon');
+  if (data.icon) {
+    iconEl.innerHTML = data.icon.startsWith('http')
+      ? `<img src="${data.icon}" alt="">`
+      : data.icon;
+  }
+ 
+  const label = document.createElement('span');
+  label.classList.add('item-label');
+  label.textContent = ing;
+ 
+  if (data.count > 1) {
+    const cnt = document.createElement('span');
+    cnt.classList.add('item-count');
+    cnt.textContent = ` ×${data.count}`;
+    label.appendChild(cnt);
+  }
+ 
+  left.appendChild(iconEl);
+  left.appendChild(label);
+  row.appendChild(check);
+  row.appendChild(left);
+  return row;
+}
+ 
+// ---- RENDER ----
 function renderShopping(shopping) {
   const container = document.getElementById('list-container');
   container.innerHTML = '';
-
+ 
   const sortedLieux = Object.keys(shopping).sort((a, b) =>
     a.localeCompare(b, 'fr', { sensitivity: 'base' })
   );
-
+ 
   if (!sortedLieux.length) {
-    container.innerHTML = '<div class="error-msg">Aucun ingrédient dans cette liste.</div>';
+    container.innerHTML = '<div class="error-msg">Aucun ingrédient.</div>';
     return;
   }
-
+ 
   let total = 0;
-
+ 
   sortedLieux.forEach(lieu => {
     const section = document.createElement('div');
     section.classList.add('section');
-
-    const title = document.createElement('div');
-    title.classList.add('section-title');
-    title.textContent = lieu.length > 3 ? lieu.slice(3) : lieu;
-    section.appendChild(title);
-
-    Object.entries(shopping[lieu]).forEach(([ing, data]) => {
-      total++;
-      const row = document.createElement('div');
-      row.classList.add('shopping-item');
-
-      // Checkbox
-      const check = document.createElement('div');
-      check.classList.add('item-check');
-      check.addEventListener('click', () => {
-        row.classList.toggle('checked');
+ 
+    const sTitle = document.createElement('div');
+    sTitle.classList.add('section-title');
+    sTitle.textContent = lieu.length > 3 ? lieu.slice(3) : lieu;
+    section.appendChild(sTitle);
+ 
+    if (isMarche(lieu)) {
+      // ---- MARCHÉ : sous-sections par semaine ----
+      const weekLabels = Object.keys(shopping[lieu]).sort((a, b) => {
+        const na = parseInt(a.match(/\d+/)?.[0] || 0);
+        const nb = parseInt(b.match(/\d+/)?.[0] || 0);
+        return na - nb;
       });
-
-      // Left zone (icon + label) → opens popup
-      const left = document.createElement('div');
-      left.classList.add('item-left');
-      left.addEventListener('click', () => {
-        showRecipesPopup(ing, data.recipes || []);
+ 
+      weekLabels.forEach(weekLabel => {
+        const weekItems = shopping[lieu][weekLabel];
+        if (!weekItems || !Object.keys(weekItems).length) return;
+ 
+        const weekSub = document.createElement('div');
+        weekSub.classList.add('week-subtitle');
+        weekSub.textContent = weekLabel;
+        section.appendChild(weekSub);
+ 
+        Object.entries(weekItems).forEach(([ing, data]) => {
+          total++;
+          section.appendChild(buildRow(ing, data));
+        });
       });
-
-      // Icon
-      const iconEl = document.createElement('span');
-      iconEl.classList.add('item-icon');
-      if (data.icon) {
-        if (data.icon.startsWith('http')) {
-          iconEl.innerHTML = `<img src="${data.icon}" alt="">`;
-        } else {
-          iconEl.textContent = data.icon;
-        }
-      }
-
-      // Label
-      const label = document.createElement('span');
-      label.classList.add('item-label');
-      label.textContent = ing;
-
-      if (data.count > 1) {
-        const cnt = document.createElement('span');
-        cnt.classList.add('item-count');
-        cnt.textContent = `×${data.count}`;
-        label.appendChild(cnt);
-      }
-
-      left.appendChild(iconEl);
-      left.appendChild(label);
-
-      row.appendChild(check);
-      row.appendChild(left);
-      section.appendChild(row);
-    });
-
+ 
+    } else {
+      // ---- AUTRES RAYONS : liste plate ----
+      Object.entries(shopping[lieu]).forEach(([ing, data]) => {
+        total++;
+        section.appendChild(buildRow(ing, data));
+      });
+    }
+ 
     container.appendChild(section);
   });
-
+ 
+  document.getElementById('legend').textContent =
+    `${total} ingrédients · Appuyez pour voir les recettes`;
 }
-
+ 
 // ---- INIT ----
 function init() {
   const hash = window.location.hash.slice(1);
   if (!hash) {
     document.getElementById('list-container').innerHTML =
-      '<div class="error-msg">Lien invalide ou données manquantes.</div>';
+      '<div class="error-msg">Lien invalide.</div>';
     document.getElementById('header-subtitle').textContent = '';
     return;
   }
-
+ 
   let state;
   try {
     const json = LZString.decompressFromEncodedURIComponent(hash);
     state = JSON.parse(json);
   } catch (e) {
     document.getElementById('list-container').innerHTML =
-      '<div class="error-msg">Impossible de lire les données du lien.</div>';
+      '<div class="error-msg">Impossible de lire les données.</div>';
     return;
   }
-
-  // state = { shopping: {...}, generatedAt: "..." }
-  const subtitle = state.generatedAt
-    ? `Générée le ${state.generatedAt}`
-    : 'Liste de courses';
-  document.getElementById('header-subtitle').textContent = subtitle;
-
+ 
+  document.getElementById('header-subtitle').textContent =
+    state.generatedAt ? `Générée le ${state.generatedAt}` : '';
+ 
   renderShopping(state.shopping || {});
 }
-
+ 
 init();
 </script>
 </body>

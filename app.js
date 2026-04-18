@@ -244,6 +244,9 @@ popup.onclick = () => popup.classList.add("hidden");
 // ---------- UTILITAIRES ---------- //
 
 // Retourne tous les repas sélectionnés, pour toutes les semaines
+function isMarche(lieu) {
+  return lieu.toLowerCase().includes("marché") || lieu.toLowerCase().includes("marche");
+}
 function getAllSelectedRecipesForMail() {
   const all = [];
 
@@ -530,18 +533,32 @@ function addRecipeLine(container, recipe, weekIndex, dayIndex) {
 function buildShoppingPayload(shopping, iconsMap) {
   const enriched = {};
  
-  Object.entries(shopping).forEach(([lieu, weeks]) => {
+  Object.entries(shopping).forEach(([lieu, value]) => {
     enriched[lieu] = {};
-    Object.entries(weeks).forEach(([weekLabel, items]) => {
-      enriched[lieu][weekLabel] = {};
-      Object.entries(items).forEach(([ing, data]) => {
-        enriched[lieu][weekLabel][ing] = {
+ 
+    if (isMarche(lieu)) {
+      // value = { weekLabel: { ing: {count, recipes} } }
+      Object.entries(value).forEach(([weekLabel, items]) => {
+        enriched[lieu][weekLabel] = {};
+        Object.entries(items).forEach(([ing, data]) => {
+          enriched[lieu][weekLabel][ing] = {
+            count: data.count,
+            recipes: data.recipes,
+            icon: iconsMap?.[ing] || null,
+            _byWeek: true
+          };
+        });
+      });
+    } else {
+      // value = { ing: {count, recipes} }
+      Object.entries(value).forEach(([ing, data]) => {
+        enriched[lieu][ing] = {
           count: data.count,
           recipes: data.recipes,
           icon: iconsMap?.[ing] || null
         };
       });
-    });
+    }
   });
  
   return {
@@ -887,17 +904,28 @@ function buildShoppingData(recipesForMail, locationsMap) {
         const lieu = locationsMap[ing] || "Lieu inconnu";
  
         if (!shopping[lieu]) shopping[lieu] = {};
-        if (!shopping[lieu][weekLabel]) shopping[lieu][weekLabel] = {};
-        if (!shopping[lieu][weekLabel][ing]) {
-          shopping[lieu][weekLabel][ing] = { count: 0, recipes: [] };
-        }
  
-        shopping[lieu][weekLabel][ing].count += 1;
-        shopping[lieu][weekLabel][ing].recipes.push({
-          name: r.nom,
-          day: entry.day,
-          week: weekLabel
-        });
+        if (isMarche(lieu)) {
+          // Structure à 3 niveaux : lieu → semaine → ingrédient
+          if (!shopping[lieu][weekLabel]) shopping[lieu][weekLabel] = {};
+          if (!shopping[lieu][weekLabel][ing]) {
+            shopping[lieu][weekLabel][ing] = { count: 0, recipes: [], _byWeek: true };
+          }
+          shopping[lieu][weekLabel][ing].count += 1;
+          shopping[lieu][weekLabel][ing].recipes.push({
+            name: r.nom, day: entry.day, week: weekLabel
+          });
+ 
+        } else {
+          // Structure à 2 niveaux : lieu → ingrédient (agrégé)
+          if (!shopping[lieu][ing]) {
+            shopping[lieu][ing] = { count: 0, recipes: [] };
+          }
+          shopping[lieu][ing].count += 1;
+          shopping[lieu][ing].recipes.push({
+            name: r.nom, day: entry.day, week: weekLabel
+          });
+        }
       });
     });
   });
@@ -920,102 +948,98 @@ function renderShoppingList(shopping, icons) {
     sectionTitle.textContent = lieu.slice(3);
     section.appendChild(sectionTitle);
  
-    // Semaines dans l'ordre naturel (elles arrivent déjà triées, mais on sécurise)
-    const weekLabels = Object.keys(shopping[lieu]);
-    // Trier par numéro de semaine (le label commence par "Semaine X")
-    weekLabels.sort((a, b) => {
-      const na = parseInt(a.match(/\d+/)?.[0] || 0);
-      const nb = parseInt(b.match(/\d+/)?.[0] || 0);
-      return na - nb;
-    });
- 
-    weekLabels.forEach(weekLabel => {
-      const weekItems = shopping[lieu][weekLabel];
-      if (!weekItems || !Object.keys(weekItems).length) return;
- 
-      // Sous-titre semaine
-      const weekSubtitle = document.createElement("div");
-      weekSubtitle.classList.add("shopping-week-subtitle");
-      weekSubtitle.textContent = weekLabel;
-      section.appendChild(weekSubtitle);
- 
-      Object.entries(weekItems).forEach(([ing, data]) => {
-        const row = document.createElement("div");
-        row.classList.add("shopping-item");
- 
-        const icon = icons?.[ing];
- 
-        const label = document.createElement("span");
-        label.style.cursor = "pointer";
- 
-        // Icône
-        if (icon) {
-          if (icon.startsWith("http")) {
-            const img = document.createElement("img");
-            img.src = icon;
-            img.style.width = "18px";
-            img.style.height = "18px";
-            img.style.marginRight = "6px";
-            img.style.verticalAlign = "middle";
-            label.appendChild(img);
-          } else {
-            const iconSpan = document.createElement("span");
-            iconSpan.textContent = icon + " ";
-            label.appendChild(iconSpan);
-          }
-        }
- 
-        // Texte
-        label.appendChild(
-          document.createTextNode(
-            `${ing}${data.count > 1 ? ` (x${data.count})` : ""}`
-          )
-        );
- 
-        // CLICK → popup recettes
-        label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
- 
-        // Bouton supprimer
-        const trash = document.createElement("img");
-        trash.src = "trash.PNG";
-        trash.classList.add("icon");
-        trash.style.cursor = "pointer";
- 
-        trash.onclick = (e) => {
-          e.stopPropagation();
- 
-          delete shopping[lieu][weekLabel][ing];
- 
-          // Nettoyer les niveaux vides
-          if (Object.keys(shopping[lieu][weekLabel]).length === 0) {
-            delete shopping[lieu][weekLabel];
-          }
-          if (Object.keys(shopping[lieu]).length === 0) {
-            delete shopping[lieu];
-          }
- 
-          currentShoppingState = shopping;
-          renderShoppingList(shopping, icons);
-        };
- 
-        const left = document.createElement("div");
-        left.style.display = "flex";
-        left.style.alignItems = "center";
-        left.style.gap = "8px";
-        left.appendChild(label);
-        left.appendChild(trash);
- 
-        row.appendChild(left);
-        section.appendChild(row);
+    if (isMarche(lieu)) {
+      // ---- MARCHÉ : sous-sections par semaine ----
+      const weekLabels = Object.keys(shopping[lieu]).sort((a, b) => {
+        const na = parseInt(a.match(/\d+/)?.[0] || 0);
+        const nb = parseInt(b.match(/\d+/)?.[0] || 0);
+        return na - nb;
       });
-    });
+ 
+      weekLabels.forEach(weekLabel => {
+        const weekItems = shopping[lieu][weekLabel];
+        if (!weekItems || !Object.keys(weekItems).length) return;
+ 
+        const weekSubtitle = document.createElement("div");
+        weekSubtitle.classList.add("shopping-week-subtitle");
+        weekSubtitle.textContent = weekLabel;
+        section.appendChild(weekSubtitle);
+ 
+        Object.entries(weekItems).forEach(([ing, data]) => {
+          section.appendChild(
+            buildShoppingRow(ing, data, icons, () => {
+              delete shopping[lieu][weekLabel][ing];
+              if (!Object.keys(shopping[lieu][weekLabel]).length) delete shopping[lieu][weekLabel];
+              if (!Object.keys(shopping[lieu]).length) delete shopping[lieu];
+              currentShoppingState = shopping;
+              renderShoppingList(shopping, icons);
+            })
+          );
+        });
+      });
+ 
+    } else {
+      // ---- AUTRES RAYONS : liste plate agrégée ----
+      Object.entries(shopping[lieu]).forEach(([ing, data]) => {
+        section.appendChild(
+          buildShoppingRow(ing, data, icons, () => {
+            delete shopping[lieu][ing];
+            if (!Object.keys(shopping[lieu]).length) delete shopping[lieu];
+            currentShoppingState = shopping;
+            renderShoppingList(shopping, icons);
+          })
+        );
+      });
+    }
  
     container.appendChild(section);
   });
  
-  // Afficher le bouton de génération de liens
   const genBtn = document.getElementById("generate-links-btn");
   if (genBtn) genBtn.style.display = "inline-block";
+}
+ 
+// Construit une ligne d'ingrédient (réutilisé pour marché et autres)
+function buildShoppingRow(ing, data, icons, onDelete) {
+  const row = document.createElement("div");
+  row.classList.add("shopping-item");
+ 
+  const icon = icons?.[ing];
+  const label = document.createElement("span");
+  label.style.cursor = "pointer";
+ 
+  if (icon) {
+    if (icon.startsWith("http")) {
+      const img = document.createElement("img");
+      img.src = icon;
+      img.style.cssText = "width:18px;height:18px;margin-right:6px;vertical-align:middle;";
+      label.appendChild(img);
+    } else {
+      const iconSpan = document.createElement("span");
+      iconSpan.textContent = icon + " ";
+      label.appendChild(iconSpan);
+    }
+  }
+ 
+  label.appendChild(
+    document.createTextNode(`${ing}${data.count > 1 ? ` (x${data.count})` : ""}`)
+  );
+ 
+  label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
+ 
+  const trash = document.createElement("img");
+  trash.src = "trash.PNG";
+  trash.classList.add("icon");
+  trash.style.cursor = "pointer";
+  trash.onclick = (e) => { e.stopPropagation(); onDelete(); };
+ 
+  const left = document.createElement("div");
+  left.style.cssText = "display:flex;align-items:center;gap:8px;";
+  left.appendChild(label);
+  left.appendChild(trash);
+ 
+  row.appendChild(left);
+  return row;
 }
  
 function showRecipesUsingIngredient(ingredient, recipes) {
