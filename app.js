@@ -245,7 +245,7 @@ popup.onclick = () => popup.classList.add("hidden");
 
 // Retourne tous les repas sélectionnés, pour toutes les semaines
 function isMarche(lieu) {
-  return lieu.toLowerCase().includes("marché") || lieu.toLowerCase().includes("marche");
+  return lieu.includes("Marché");
 }
 function getAllSelectedRecipesForMail() {
   const all = [];
