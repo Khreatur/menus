@@ -273,7 +273,7 @@ function findClosestRecipe(spokenText, recipes) {
 // Retourne l'ensemble des repas sélectionnés pour toutes les semaines
 function getAllSelectedRecipesForMail() {
   const all = [];
-  for (let w = 0; w < numWeeks; w++)
+  for (let w = 0; w < numWeeks; w++){
     if (!selectedRecipes[w]) continue;
     const weekLabel = getWeekLabel(w);
     DAYS_MEALS.forEach((dm, dayIndex) => {
@@ -590,7 +590,7 @@ async function initMenu() {
   weeksContainer.innerHTML = "";
   selectedRecipes = {};
 
-  for (let w = 0; w < numWeeks; w++)
+  for (let w = 0; w < numWeeks; w++){
     selectedRecipes[w] = {};
 
     const weekCol = document.createElement("div");
