@@ -324,6 +324,43 @@ function buildRow(ing, data) {
   return row;
 }
  
+// ---- ADD ROW ----
+function buildAddRow(section, lieu, shopping) {
+  const addRow = document.createElement('div');
+  addRow.classList.add('add-row');
+ 
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = '+ Ajouter un article…';
+  input.classList.add('add-input');
+ 
+  function addItem() {
+    const val = input.value.trim();
+    if (!val) return;
+ 
+    const data = { count: 1, recipes: [], icon: null };
+ 
+    if (isMarche(lieu)) {
+      const bucket = 'Ajouts manuels';
+      if (!shopping[lieu][bucket]) shopping[lieu][bucket] = {};
+      shopping[lieu][bucket][val] = data;
+    } else {
+      shopping[lieu][val] = data;
+    }
+ 
+    const newRow = buildRow(val, data);
+    section.insertBefore(newRow, addRow);
+    input.value = '';
+    input.focus();
+  }
+ 
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+  input.addEventListener('blur', () => { if (input.value.trim()) addItem(); });
+ 
+  addRow.appendChild(input);
+  return addRow;
+}
+ 
 // ---- RENDER ----
 function renderShopping(shopping) {
   const container = document.getElementById('list-container');
@@ -379,6 +416,9 @@ function renderShopping(shopping) {
         section.appendChild(buildRow(ing, data));
       });
     }
+ 
+    // ---- Champ d'ajout libre ----
+    section.appendChild(buildAddRow(section, lieu, shopping));
  
     container.appendChild(section);
   });

@@ -537,7 +537,6 @@ function buildShoppingPayload(shopping, iconsMap) {
     enriched[lieu] = {};
  
     if (isMarche(lieu)) {
-      // value = { weekLabel: { ing: {count, recipes} } }
       Object.entries(value).forEach(([weekLabel, items]) => {
         enriched[lieu][weekLabel] = {};
         Object.entries(items).forEach(([ing, data]) => {
@@ -550,7 +549,6 @@ function buildShoppingPayload(shopping, iconsMap) {
         });
       });
     } else {
-      // value = { ing: {count, recipes} }
       Object.entries(value).forEach(([ing, data]) => {
         enriched[lieu][ing] = {
           count: data.count,
@@ -906,7 +904,6 @@ function buildShoppingData(recipesForMail, locationsMap) {
         if (!shopping[lieu]) shopping[lieu] = {};
  
         if (isMarche(lieu)) {
-          // Structure à 3 niveaux : lieu → semaine → ingrédient
           if (!shopping[lieu][weekLabel]) shopping[lieu][weekLabel] = {};
           if (!shopping[lieu][weekLabel][ing]) {
             shopping[lieu][weekLabel][ing] = { count: 0, recipes: [], _byWeek: true };
@@ -915,9 +912,7 @@ function buildShoppingData(recipesForMail, locationsMap) {
           shopping[lieu][weekLabel][ing].recipes.push({
             name: r.nom, day: entry.day, week: weekLabel
           });
- 
         } else {
-          // Structure à 2 niveaux : lieu → ingrédient (agrégé)
           if (!shopping[lieu][ing]) {
             shopping[lieu][ing] = { count: 0, recipes: [] };
           }
@@ -949,7 +944,6 @@ function renderShoppingList(shopping, icons) {
     section.appendChild(sectionTitle);
  
     if (isMarche(lieu)) {
-      // ---- MARCHÉ : sous-sections par semaine ----
       const weekLabels = Object.keys(shopping[lieu]).sort((a, b) => {
         const na = parseInt(a.match(/\d+/)?.[0] || 0);
         const nb = parseInt(b.match(/\d+/)?.[0] || 0);
@@ -979,7 +973,6 @@ function renderShoppingList(shopping, icons) {
       });
  
     } else {
-      // ---- AUTRES RAYONS : liste plate agrégée ----
       Object.entries(shopping[lieu]).forEach(([ing, data]) => {
         section.appendChild(
           buildShoppingRow(ing, data, icons, () => {
@@ -992,11 +985,120 @@ function renderShoppingList(shopping, icons) {
       });
     }
  
+    // ---- Champ d'ajout libre en fin de section ----
+    section.appendChild(buildAddRow(section, lieu, shopping, icons));
+ 
     container.appendChild(section);
   });
  
   const genBtn = document.getElementById("generate-links-btn");
   if (genBtn) genBtn.style.display = "inline-block";
+}
+function buildShoppingRow(ing, data, icons, onDelete) {
+  const row = document.createElement("div");
+  row.classList.add("shopping-item");
+ 
+  const icon = icons?.[ing];
+  const label = document.createElement("span");
+  label.style.cursor = "pointer";
+ 
+  if (icon) {
+    if (icon.startsWith("http")) {
+      const img = document.createElement("img");
+      img.src = icon;
+      img.style.cssText = "width:18px;height:18px;margin-right:6px;vertical-align:middle;";
+      label.appendChild(img);
+    } else {
+      const iconSpan = document.createElement("span");
+      iconSpan.textContent = icon + " ";
+      label.appendChild(iconSpan);
+    }
+  }
+ 
+  label.appendChild(
+    document.createTextNode(`${ing}${data.count > 1 ? ` (x${data.count})` : ""}`)
+  );
+ 
+  label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
+ 
+  const trash = document.createElement("img");
+  trash.src = "trash.PNG";
+  trash.classList.add("icon");
+  trash.style.cursor = "pointer";
+  trash.onclick = (e) => { e.stopPropagation(); onDelete(); };
+ 
+  const left = document.createElement("div");
+  left.style.cssText = "display:flex;align-items:center;gap:8px;";
+  left.appendChild(label);
+  left.appendChild(trash);
+ 
+  row.appendChild(left);
+  return row;
+}
+function buildAddRow(section, lieu, shopping, icons) {
+  const addRow = document.createElement("div");
+  addRow.classList.add("shopping-add-row");
+ 
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "+ Ajouter un article…";
+  input.classList.add("shopping-add-input");
+ 
+  function addItem() {
+    const val = input.value.trim();
+    if (!val) return;
+ 
+    // Insérer dans la structure shopping
+    if (isMarche(lieu)) {
+      // Pour le marché : on ajoute dans un bucket "Ajouts manuels"
+      const bucket = "Ajouts manuels";
+      if (!shopping[lieu][bucket]) shopping[lieu][bucket] = {};
+      if (!shopping[lieu][bucket][val]) {
+        shopping[lieu][bucket][val] = { count: 1, recipes: [], _byWeek: true };
+      } else {
+        shopping[lieu][bucket][val].count += 1;
+      }
+    } else {
+      if (!shopping[lieu][val]) {
+        shopping[lieu][val] = { count: 1, recipes: [] };
+      } else {
+        shopping[lieu][val].count += 1;
+      }
+    }
+ 
+    currentShoppingState = shopping;
+ 
+    // Insérer la ligne juste avant le champ d'ajout (addRow)
+    const newRow = buildShoppingRow(val, shopping[lieu][val] || { count: 1, recipes: [] }, icons, () => {
+      if (isMarche(lieu)) {
+        const bucket = "Ajouts manuels";
+        delete shopping[lieu][bucket]?.[val];
+        if (shopping[lieu][bucket] && !Object.keys(shopping[lieu][bucket]).length) {
+          delete shopping[lieu][bucket];
+        }
+      } else {
+        delete shopping[lieu][val];
+      }
+      if (!Object.keys(shopping[lieu]).length) delete shopping[lieu];
+      currentShoppingState = shopping;
+      newRow.remove();
+    });
+ 
+    section.insertBefore(newRow, addRow);
+    input.value = "";
+    input.focus();
+  }
+ 
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addItem();
+  });
+ 
+  input.addEventListener("blur", () => {
+    if (input.value.trim()) addItem();
+  });
+ 
+  addRow.appendChild(input);
+  return addRow;
 }
  
 // Construit une ligne d'ingrédient (réutilisé pour marché et autres)
