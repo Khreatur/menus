@@ -1088,6 +1088,8 @@ async function startApp() {
     console.error("Erreur au démarrage de l'app :", err);
   } finally {
     if (loader) loader.style.display = "none";
+    title.classList.remove("hidden");
+    wrapper.classList.remove("hidden");
   }
 }
 
