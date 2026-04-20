@@ -4,6 +4,10 @@ document.addEventListener("DOMContentLoaded", () => {
 // CONFIGURATION
 // ============================================================
 
+// Référence globale au drag en cours
+let dragSource = null;
+// { weekIndex, dayIndex, recipeIndex, recipe, lineEl, containerEl }
+
 const USE_MOCK_DATA = false;
 
 const EXCLUDED_CATEGORIES = ["APERO", "BRUNCH"];
@@ -429,43 +433,43 @@ function showRecipesUsingIngredient(ingredient, recipes) {
 // gestion de bloc de semaines
 function createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer) {
   selectedRecipes[w] = {};
-
+ 
   const weekCol = document.createElement("div");
   weekCol.classList.add("week-column");
   weekCol.dataset.week = w;
-
+ 
   const weekHeader = document.createElement("div");
   weekHeader.classList.add("week-header");
   weekHeader.textContent = getWeekLabel(w);
-
   weekCol.appendChild(weekHeader);
-
+ 
   const menuList = document.createElement("div");
   menuList.classList.add("menu-list");
   weekCol.appendChild(menuList);
-
   weeksContainer.appendChild(weekCol);
-
+ 
   DAYS_MEALS.forEach((dm, dayIndex) => {
     const isSundayEvening =
       dm.day === "Dimanche" &&
       dm.meal === "soir" &&
       CURRENT_SEASON === "Hiver";
-
+ 
     const recipe = (isSundayEvening && soups.length)
       ? getRandomRecipe(soups)
       : getRandomRecipe(recipes);
-
+ 
     selectedRecipes[w][dayIndex] = recipe ? [recipe] : [];
     if (recipe) excludedRecipeIds.add(recipe.id);
-
+ 
     const div = document.createElement("div");
     div.classList.add("menu-item");
-    div.dataset.week = w;
+    div.dataset.week  = w;
     div.dataset.index = dayIndex;
-
+ 
     div.innerHTML = `
-      <div class="day-label">${dm.day} <span class="meal-badge meal-${dm.meal}">${dm.meal}</span></div>
+      <div class="day-label">
+        ${dm.day} <span class="meal-badge meal-${dm.meal}">${dm.meal}</span>
+      </div>
       <div class="recipes-container"></div>
       <button class="add-recipe-btn">+ Ajouter</button>
       <div class="search-recipe-wrapper">
@@ -473,12 +477,12 @@ function createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer) {
         <ul class="search-recipe-dropdown hidden"></ul>
       </div>
     `;
-
+ 
     menuList.appendChild(div);
-
+ 
     const recipesContainer = div.querySelector(".recipes-container");
-
-    // bouton ajouter recette
+ 
+    // Bouton ajouter aléatoire
     div.querySelector(".add-recipe-btn").onclick = () => {
       const newRecipe = getRandomRecipe(recipes);
       if (!newRecipe) return;
@@ -486,10 +490,47 @@ function createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer) {
       excludedRecipeIds.add(newRecipe.id);
       addRecipeLine(recipesContainer, newRecipe, w, dayIndex);
     };
-
+ 
+    // Recherche textuelle
+    const searchInput = div.querySelector(".search-recipe-input");
+    const dropdown    = div.querySelector(".search-recipe-dropdown");
+ 
+    searchInput.addEventListener("input", () => {
+      const query = normalize(searchInput.value);
+      dropdown.innerHTML = "";
+      if (!query) { dropdown.classList.add("hidden"); return; }
+      const matches = allRecipesCache.filter(r =>
+        normalize(r.properties?.Nom?.title?.[0]?.plain_text || "").includes(query)
+      );
+      if (!matches.length) { dropdown.classList.add("hidden"); return; }
+      matches.forEach(r => {
+        const li    = document.createElement("li");
+        const name  = r.properties?.Nom?.title?.[0]?.plain_text || "Sans nom";
+        const emoji = r.icon?.type === "emoji" ? r.icon.emoji + " " : "";
+        li.textContent = emoji + name;
+        li.addEventListener("mousedown", () => {
+          selectedRecipes[w][dayIndex].push(r);
+          excludedRecipeIds.add(r.id);
+          addRecipeLine(recipesContainer, r, w, dayIndex);
+          searchInput.value = "";
+          dropdown.classList.add("hidden");
+        });
+        dropdown.appendChild(li);
+      });
+      dropdown.classList.remove("hidden");
+    });
+ 
+    searchInput.addEventListener("blur", () => {
+      setTimeout(() => dropdown.classList.add("hidden"), 150);
+    });
+ 
+    // Affiche les recettes initiales
     selectedRecipes[w][dayIndex].forEach(r =>
       addRecipeLine(recipesContainer, r, w, dayIndex)
     );
+ 
+    // ← AJOUT : rend ce créneau droppable
+    makeDropTarget(div, w, dayIndex);
   });
 }
 
@@ -528,8 +569,7 @@ function addRecipeLine(container, recipe, weekIndex, dayIndex) {
       <img src="trash.PNG"    class="icon icon-trash"  title="Supprimer la recette" />
     </div>
   `;
-
-
+ 
   // Modifier → pioche une nouvelle recette aléatoire
   line.querySelector(".icon-change").onclick = (e) => {
     e.stopPropagation();
@@ -545,23 +585,31 @@ function addRecipeLine(container, recipe, weekIndex, dayIndex) {
     selectedRecipes[weekIndex][dayIndex][idx] = newRecipe;
     recipe = newRecipe;
     updateRecipeBlock(line, recipe);
+    // Rebranche les clics popup
     line.querySelector(".name").onclick        = () => showIngredients(recipe);
     line.querySelector(".icon-recette").onclick = () => showIngredients(recipe);
+    // Rebranche le drag avec le bon index
+    const newIdx = selectedRecipes[weekIndex][dayIndex].indexOf(recipe);
+    makeDraggable(line, weekIndex, dayIndex, newIdx);
   };
-
-  // Supprimer → retire la recette de l'état et du DOM
+ 
+  // Supprimer
   line.querySelector(".icon-trash").onclick = (e) => {
     e.stopPropagation();
     selectedRecipes[weekIndex][dayIndex] =
-      selectedRecipes[weekIndex][dayIndex].filter(r => r.id !== recipe.id);
+      selectedRecipes[weekIndex][dayIndex].filter(r => r !== recipe);
     excludedRecipeIds.delete(recipe.id);
     line.remove();
   };
-
+ 
   container.appendChild(line);
   updateRecipeBlock(line, recipe);
   line.querySelector(".name").onclick        = () => showIngredients(recipe);
   line.querySelector(".icon-recette").onclick = () => showIngredients(recipe);
+ 
+  // Rend la ligne draggable (index = position actuelle dans le tableau)
+  const recipeIndex = selectedRecipes[weekIndex][dayIndex].indexOf(recipe);
+  makeDraggable(line, weekIndex, dayIndex, recipeIndex);
 }
 
 // Initialise la grille de menus (4 semaines × 12 créneaux)
@@ -586,6 +634,116 @@ async function initMenu() {
   for (let w = 0; w < numWeeks; w++) {
   createWeekColumn(w, recipes, soups, CURRENT_SEASON, weeksContainer);
 }
+}
+// ---- RENDRE UNE LIGNE DRAGGABLE ----
+// À appeler sur chaque .recipe-line créée dans addRecipeLine()
+ 
+function makeDraggable(lineEl, weekIndex, dayIndex, recipeIndex) {
+  lineEl.setAttribute("draggable", "true");
+  lineEl.classList.add("draggable");
+ 
+  lineEl.addEventListener("dragstart", (e) => {
+    dragSource = {
+      weekIndex,
+      dayIndex,
+      recipeIndex,
+      recipe:      selectedRecipes[weekIndex][dayIndex][recipeIndex],
+      lineEl,
+      containerEl: lineEl.closest(".recipes-container")
+    };
+    lineEl.classList.add("dragging");
+    // Payload minimal pour que le browser accepte le drag
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "recipe-drag");
+  });
+ 
+  lineEl.addEventListener("dragend", () => {
+    lineEl.classList.remove("dragging");
+    // Nettoie les highlights résiduels
+    document.querySelectorAll(".drop-target").forEach(el =>
+      el.classList.remove("drop-target")
+    );
+    dragSource = null;
+  });
+}
+ 
+ 
+// ---- RENDRE UN CRÉNEAU DROP TARGET ----
+// À appeler sur chaque .menu-item créé dans createWeekColumn()
+ 
+function makeDropTarget(menuItemEl, weekIndex, dayIndex) {
+  menuItemEl.addEventListener("dragover", (e) => {
+    if (!dragSource) return;
+    // Empêche le comportement par défaut (refus du drop)
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    menuItemEl.classList.add("drop-target");
+  });
+ 
+  menuItemEl.addEventListener("dragleave", (e) => {
+    // Ne retire le highlight que si on sort vraiment du menu-item
+    if (!menuItemEl.contains(e.relatedTarget)) {
+      menuItemEl.classList.remove("drop-target");
+    }
+  });
+ 
+  menuItemEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    menuItemEl.classList.remove("drop-target");
+ 
+    if (!dragSource) return;
+ 
+    const srcW  = dragSource.weekIndex;
+    const srcD  = dragSource.dayIndex;
+    const srcR  = dragSource.recipeIndex;
+    const dstW  = weekIndex;
+    const dstD  = dayIndex;
+ 
+    // Même créneau → no-op
+    if (srcW === dstW && srcD === dstD) return;
+ 
+    const srcRecipe = selectedRecipes[srcW][srcD][srcR];
+ 
+    // Cas 1 : la destination a au moins une recette → on swap la première
+    // Cas 2 : la destination est vide → on déplace (src devient vide)
+    const dstRecipes = selectedRecipes[dstW][dstD] || [];
+    const dstRecipe  = dstRecipes[0] || null;
+ 
+    // --- Mise à jour de l'état ---
+    if (dstRecipe) {
+      // Swap
+      selectedRecipes[srcW][srcD][srcR] = dstRecipe;
+      selectedRecipes[dstW][dstD][0]    = srcRecipe;
+    } else {
+      // Déplacement : src → dst, src devient []
+      selectedRecipes[dstW][dstD] = [srcRecipe];
+      selectedRecipes[srcW][srcD].splice(srcR, 1);
+    }
+ 
+    // --- Mise à jour du DOM ---
+    // On re-render les deux créneaux concernés
+    rerenderMenuItemDOM(srcW, srcD);
+    rerenderMenuItemDOM(dstW, dstD);
+  });
+}
+ 
+ 
+// ---- RE-RENDER D'UN CRÉNEAU ----
+// Reconstruit uniquement le .recipes-container d'un créneau
+// sans toucher au label, aux boutons ajouter/recherche
+ 
+function rerenderMenuItemDOM(w, d) {
+  const menuItem = document.querySelector(
+    `.menu-item[data-week="${w}"][data-index="${d}"]`
+  );
+  if (!menuItem) return;
+ 
+  const container = menuItem.querySelector(".recipes-container");
+  container.innerHTML = "";
+ 
+  (selectedRecipes[w][d] || []).forEach((recipe, recipeIndex) => {
+    addRecipeLine(container, recipe, w, d);
+  });
 }
 
 
@@ -915,6 +1073,7 @@ async function copyLink(url, btn, label) {
 }
 
 
+
 // ============================================================
 // DÉMARRAGE
 // ============================================================
@@ -934,6 +1093,9 @@ async function startApp() {
 
 // Génère et affiche la liste de courses triée par lieu
 document.getElementById("sort-shopping-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("sort-shopping-btn"); // ← ajoute
+  btn.disabled = true;                                       // ← ajoute
+  btn.textContent = "Création de la liste...";                       // ← ajoute
   const container = document.getElementById("shopping-list-container");
   container.classList.remove("hidden");
 
@@ -952,9 +1114,12 @@ document.getElementById("sort-shopping-btn").addEventListener("click", async () 
 
   const copyBtn = document.getElementById("send-mail-btn");
   if (copyBtn) copyBtn.style.display = "inline-block";
+    btn.disabled = false;                          // ← ajoute
+    btn.textContent = "Trier la liste de courses"; // ← ajoute
 });
 
 document.getElementById("generate-links-btn").addEventListener("click", generateLinks);
+
 
 startApp();
 document.getElementById("add-week-btn").addEventListener("click", addWeek);

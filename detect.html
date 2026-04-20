@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>Extraction d'ingrédients</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+
+</head>
+<body>
+  <div id="extractor-panel">
+  <h2>🔍 Extraire les ingrédients</h2>
+  <p class="extractor-hint">Collez le texte d'une recette — les ingrédients présents dans votre base seront détectés automatiquement.</p>
+  <textarea id="extractor-input" placeholder="Collez votre recette ici…" rows="8"></textarea>
+  <button id="extractor-btn" class="send-mail-btn">Analyser</button>
+  <div id="extractor-result"></div>
+</div>
+</body>
+</html>
+<script>
+
+// ============================================================
+// EXTRACTION D'INGRÉDIENTS DEPUIS UN TEXTE DE RECETTE
+// ============================================================
+// À ajouter dans app.js (avant la section DÉMARRAGE)
+// À brancher dans index.html avec le HTML fourni en bas de ce fichier
+// ============================================================
+
+
+// ---- ALGORITHME ----
+
+// Distance de Levenshtein entre deux chaînes
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  // Tableau dp[i][j] = distance entre a[0..i] et b[0..j]
+  const dp = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[m][n];
+}
+
+// Racinisation légère : retire la dernière lettre si le mot > 4 chars
+// Couvre la plupart des pluriels français (tomates→tomate, lardons→lardon)
+function stem(word) {
+  return word.length > 4 ? word.slice(0, -1) : word;
+}
+
+// Score de correspondance entre un ingrédient connu et le texte de la recette.
+// Retourne : "exact" | "approx" | null
+// - exact  : l'ingrédient (normalisé, raciné) apparaît en substring dans le texte
+// - approx : au moins un mot de l'ingrédient est proche (Levenshtein ≤ seuil)
+//            d'un mot du texte
+function matchIngredient(ingName, normalizedText, textWords) {
+  const normIng  = normalize(ingName);
+  const stemIng  = stem(normIng);
+  const ingWords = normIng.split(" ").filter(w => w.length > 2);
+
+  // Passe 1 — correspondance exacte (substring normalisé)
+  if (normalizedText.includes(normIng) || normalizedText.includes(stemIng)) {
+    return "exact";
+  }
+
+  // Passe 1b — correspondance racinisée mot à mot
+  // (ex: "tomates" dans le texte → stem → "tomate" = "tomate" de l'ingrédient)
+  const allMatch = ingWords.every(iw =>
+    textWords.some(tw => stem(tw) === stem(iw))
+  );
+  if (ingWords.length > 0 && allMatch) return "exact";
+
+  // Passe 2 — distance lexicale
+  // Seuil adaptatif : 1 pour les mots courts, 2 pour les mots > 6 chars
+  const hasApprox = ingWords.some(iw => {
+    const threshold = iw.length > 6 ? 2 : 1;
+    return textWords.some(tw =>
+      Math.abs(tw.length - iw.length) <= threshold && // optimisation rapide
+      levenshtein(stem(iw), stem(tw)) <= threshold
+    );
+  });
+
+  return hasApprox ? "approx" : null;
+}
+
+// Extrait les ingrédients depuis un texte libre en les comparant
+// à la liste complète des ingrédients Notion (knownIngredients).
+// Retourne { confirmed: [...], suggestions: [...] }
+// où chaque item = { name, icon, lieu }
+function extractIngredientsFromText(recipeText, knownIngredients) {
+  const normalizedText = normalize(recipeText);
+  // Tokenise le texte en mots de plus de 2 lettres
+  const textWords = normalizedText
+    .split(/\s+/)
+    .filter(w => w.length > 2);
+
+  const confirmed  = [];
+  const suggestions = [];
+
+  knownIngredients.forEach(ing => {
+    const match = matchIngredient(ing.name, normalizedText, textWords);
+    if (match === "exact")  confirmed.push(ing);
+    else if (match === "approx") suggestions.push(ing);
+  });
+
+  // Tri alphabétique pour les deux listes
+  const byName = (a, b) => a.name.localeCompare(b.name, "fr");
+  confirmed.sort(byName);
+  suggestions.sort(byName);
+
+  return { confirmed, suggestions };
+}
+
+
+// ---- CHARGEMENT DES INGRÉDIENTS NOTION ----
+
+// Cache local pour ne pas refetch à chaque analyse
+let allIngredientsCache = null;
+
+async function loadAllIngredients() {
+  if (allIngredientsCache) return allIngredientsCache;
+
+  if (USE_MOCK_DATA) {
+    allIngredientsCache = MOCK_INGREDIENTS.map(i => ({
+      name: i.name,
+      lieu: i.lieu,
+      icon: i.icon?.emoji || null
+    }));
+    return allIngredientsCache;
+  }
+
+  try {
+    const res  = await fetch("/api/ingredients");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    allIngredientsCache = (data.results || [])
+      .filter(i => i.name)
+      .map(i => ({
+        name: i.name,
+        lieu: i.lieu || "Lieu inconnu",
+        icon: i.icon?.type === "emoji"        ? i.icon.emoji
+            : i.icon?.type === "custom_emoji" ? i.icon.custom_emoji.url
+            : i.icon?.type === "external"     ? i.icon.external.url
+            : i.icon?.type === "file"         ? i.icon.file.url
+            : null
+      }));
+
+    return allIngredientsCache;
+  } catch (err) {
+    console.error("Erreur chargement ingrédients :", err);
+    return [];
+  }
+}
+
+
+// ---- RENDU DOM ----
+
+function renderIngredientTag(ing, confirmed) {
+  const tag = document.createElement("div");
+  tag.classList.add("extractor-tag", confirmed ? "extractor-tag--confirmed" : "extractor-tag--suggestion");
+  tag.dataset.name = ing.name;
+
+  // Icône
+  if (ing.icon) {
+    const ico = document.createElement("span");
+    ico.classList.add("extractor-tag__icon");
+    ico.innerHTML = ing.icon.startsWith("http")
+      ? `<img src="${ing.icon}" style="width:16px;height:16px;vertical-align:middle;">`
+      : ing.icon;
+    tag.appendChild(ico);
+  }
+
+  // Nom
+  const label = document.createElement("span");
+  label.textContent = ing.name;
+  tag.appendChild(label);
+
+  // Bouton retirer
+  const remove = document.createElement("button");
+  remove.classList.add("extractor-tag__remove");
+  remove.textContent = "×";
+  remove.onclick = () => tag.remove();
+  tag.appendChild(remove);
+
+  return tag;
+}
+
+async function runExtractor() {
+  const textarea  = document.getElementById("extractor-input");
+  const btn       = document.getElementById("extractor-btn");
+  const resultEl  = document.getElementById("extractor-result");
+
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  btn.disabled    = true;
+  btn.textContent = "Analyse…";
+  resultEl.innerHTML = "";
+
+  try {
+    const knownIngredients = await loadAllIngredients();
+    const { confirmed, suggestions } = extractIngredientsFromText(text, knownIngredients);
+
+    if (!confirmed.length && !suggestions.length) {
+      resultEl.innerHTML = `<p class="extractor-empty">Aucun ingrédient reconnu. Vérifiez que votre base Notion est bien remplie.</p>`;
+      return;
+    }
+
+    // Section "Détectés"
+    if (confirmed.length) {
+      const section = document.createElement("div");
+      section.classList.add("extractor-section");
+      section.innerHTML = `<div class="extractor-section__title">✅ Détectés (${confirmed.length})</div>`;
+      const tags = document.createElement("div");
+      tags.classList.add("extractor-tags");
+      confirmed.forEach(ing => tags.appendChild(renderIngredientTag(ing, true)));
+      section.appendChild(tags);
+      resultEl.appendChild(section);
+    }
+
+    // Section "Suggestions"
+    if (suggestions.length) {
+      const section = document.createElement("div");
+      section.classList.add("extractor-section");
+      section.innerHTML = `<div class="extractor-section__title">🔍 Suggestions à vérifier (${suggestions.length})</div>`;
+      const tags = document.createElement("div");
+      tags.classList.add("extractor-tags");
+      suggestions.forEach(ing => tags.appendChild(renderIngredientTag(ing, false)));
+      section.appendChild(tags);
+      resultEl.appendChild(section);
+    }
+
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = "Analyser";
+  }
+}
+
+// Branchement du bouton (à placer avec les autres addEventListener en bas de app.js)
+const btn = document.getElementById("extractor-btn");
+if (btn) {
+  btn.addEventListener("click", runExtractor);
+}
+</script>

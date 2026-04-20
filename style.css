@@ -227,6 +227,27 @@ h1 {
 
 .recipe-actions .icon:hover { opacity: 1; }
 
+.recipe-line.draggable {
+  cursor: grab;
+}
+ 
+.recipe-line.draggable:active {
+  cursor: grabbing;
+}
+ 
+
+.recipe-line.dragging {
+  opacity: 0.4;
+}
+ 
+
+.menu-item.drop-target {
+  background: #f0ece3;
+  border-color: #3a3028;
+  border-style: dashed;
+  transition: background 0.15s, border-color 0.15s;
+}
+
 /* ============================================================
    BOUTON AJOUTER UNE RECETTE
 ============================================================ */
@@ -464,4 +485,113 @@ h1 {
 
 @media (max-width: 480px) {
   .menu-item { padding: 10px; }
+}
+#extractor-panel {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+/* ============================================================
+   Extraction recettes
+============================================================ */
+ 
+#extractor-panel h2 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.1rem;
+  color: #3a3028;
+  margin-bottom: 8px;
+  text-align: center;
+}
+ 
+.extractor-hint {
+  font-size: 0.82rem;
+  color: #5a5248;
+  text-align: center;
+  margin-bottom: 16px;
+}
+ 
+#extractor-input {
+  width: 100%;
+  border: 1px solid #e0dbd0;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: #2c2c2c;
+  background: #fff;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+ 
+#extractor-input:focus {
+  border-color: #3a3028;
+}
+ 
+#extractor-result {
+  margin-top: 20px;
+}
+ 
+.extractor-section {
+  margin-bottom: 20px;
+}
+ 
+.extractor-section__title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #5a5248;
+  margin-bottom: 10px;
+}
+ 
+.extractor-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+ 
+.extractor-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+ 
+.extractor-tag--confirmed {
+  background: #f0f7ee;
+  border: 1px solid #b8d8b0;
+  color: #2d6a2d;
+}
+ 
+.extractor-tag--suggestion {
+  background: #fffbf0;
+  border: 1px solid #e8d8a0;
+  color: #856404;
+}
+ 
+.extractor-tag__icon { flex-shrink: 0; font-size: 1rem; }
+ 
+.extractor-tag__remove {
+  all: unset;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+ 
+.extractor-tag__remove:hover { opacity: 1; }
+ 
+.extractor-empty {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #aaa;
+  font-style: italic;
+  padding: 20px 0;
 }
