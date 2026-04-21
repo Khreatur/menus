@@ -305,7 +305,7 @@ function buildRow(ing, data) {
   if (data.count > 1) {
     const cnt = document.createElement('span');
     cnt.classList.add('item-count');
-    cnt.textContent = ` ×${data.count}`;
+    cnt.textContent = ` ${data.count} recettes`;
     label.appendChild(cnt);
   }
   left.appendChild(iconEl);

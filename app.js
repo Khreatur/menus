@@ -38,6 +38,8 @@ let numWeeks = 2;
 let selectedRecipes   = {};
 let excludedRecipeIds = new Set();
 let ingredientMap     = {};    // ing.name → icône (emoji ou URL)
+let locationMap       = {};    // ing.name → lieu
+let iconsMapGlobal    = {};    // ing.name → icône (chargé avec lieux)
 let allRecipesCache   = [];
 
 let currentShoppingState = null;
@@ -315,58 +317,38 @@ async function fetchRecipes() {
   }
 }
 
-// Charge la map ingrédientsName → icône (emoji ou URL) dans la variable globale ingredientMap
-async function fetchIngredientMap() {
-  if (USE_MOCK_DATA) {
-    ingredientMap = {};
-    MOCK_INGREDIENTS.forEach(i => { ingredientMap[i.name] = i.icon?.emoji || null; });
-    return;
-  }
-  try {
-    const res  = await fetch("/api/ingredients");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (!Array.isArray(data.results)) return;
-    ingredientMap = {};
-    data.results.forEach(ing => {
-      if (!ing.name) return;
-      if (ing.icon?.type === "emoji")        ingredientMap[ing.name] = ing.icon.emoji;
-      else if (ing.icon?.type === "custom_emoji") ingredientMap[ing.name] = ing.icon.custom_emoji.url;
-      else if (ing.icon?.type === "external")     ingredientMap[ing.name] = ing.icon.external.url;
-      else if (ing.icon?.type === "file")         ingredientMap[ing.name] = ing.icon.file.url;
-      else ingredientMap[ing.name] = null;
-    });
-  } catch (err) {
-    console.error("Erreur fetch /api/ingredients :", err);
-    ingredientMap = {};
-  }
-}
+
 
 // Charge lieux et icônes des ingrédients depuis Notion (ou mock)
 async function loadIngredientLocations() {
+  // Si déjà chargé, retourne les globales directement
+  if (Object.keys(locationMap).length > 0) {
+    return { locations: locationMap, icons: iconsMapGlobal };
+  }
+
   if (USE_MOCK_DATA) {
-    const locations = {}, icons = {};
     MOCK_INGREDIENTS.forEach(i => {
-      locations[i.name] = i.lieu || "Lieu inconnu";
-      icons[i.name]     = i.icon?.emoji || null;
+      locationMap[i.name]    = i.lieu || "X - Lieu inconnu";
+      iconsMapGlobal[i.name] = i.icon?.emoji || null;
     });
-    return { locations, icons };
+    return { locations: locationMap, icons: iconsMapGlobal };
   }
   try {
     const res  = await fetch("/api/ingredients");
     if (!res.ok) throw new Error("Impossible de charger les ingrédients depuis Notion");
     const data = await res.json();
-    const locations = {}, icons = {};
+    console.log("[DEBUG] Premier ingrédient brut :", JSON.stringify(data.results[0], null, 2));
+    console.log("[DEBUG] Nombre d'ingrédients :", data.results.length);
     data.results.forEach(ing => {
       if (!ing.name) return;
-      locations[ing.name] = ing.lieu || "Lieu inconnu";
-      if (ing.icon?.type === "emoji")             icons[ing.name] = ing.icon.emoji;
-      else if (ing.icon?.type === "custom_emoji") icons[ing.name] = ing.icon.custom_emoji.url;
-      else if (ing.icon?.type === "external")     icons[ing.name] = ing.icon.external.url;
-      else if (ing.icon?.type === "file")         icons[ing.name] = ing.icon.file.url;
-      else icons[ing.name] = null;
+      locationMap[ing.name] = ing.lieu || "X - Lieu inconnu";
+      if (ing.icon?.type === "emoji")             iconsMapGlobal[ing.name] = ing.icon.emoji;
+      else if (ing.icon?.type === "custom_emoji") iconsMapGlobal[ing.name] = ing.icon.custom_emoji.url;
+      else if (ing.icon?.type === "external")     iconsMapGlobal[ing.name] = ing.icon.external.url;
+      else if (ing.icon?.type === "file")         iconsMapGlobal[ing.name] = ing.icon.file.url;
+      else iconsMapGlobal[ing.name] = null;
     });
-    return { locations, icons };
+    return { locations: locationMap, icons: iconsMapGlobal };
   } catch (err) {
     console.error("Erreur loadIngredientLocations :", err);
     return { locations: {}, icons: {} };
@@ -761,18 +743,18 @@ function buildShoppingData(recipesForMail, locationsMap) {
     const weekLabel = entry.weekLabel;
     entry.recipes.forEach(r => {
       r.ingredients.forEach(ing => {
-        const lieu = locationsMap[ing] || "Lieu inconnu";
-        if (!shopping[lieu]) shopping[lieu] = {};
+        const lieuFinal = locationsMap[ing] || "X - Lieu inconnu";
+        if (!shopping[lieuFinal]) shopping[lieuFinal] = {};
 
-        if (isMarche(lieu)) {
-          if (!shopping[lieu][weekLabel])       shopping[lieu][weekLabel] = {};
-          if (!shopping[lieu][weekLabel][ing])  shopping[lieu][weekLabel][ing] = { count: 0, recipes: [] };
-          shopping[lieu][weekLabel][ing].count += 1;
-          shopping[lieu][weekLabel][ing].recipes.push({ name: r.nom, day: entry.day, week: weekLabel });
+        if (isMarche(lieuFinal)) {
+          if (!shopping[lieuFinal][weekLabel])      shopping[lieuFinal][weekLabel] = {};
+          if (!shopping[lieuFinal][weekLabel][ing]) shopping[lieuFinal][weekLabel][ing] = { count: 0, recipes: [] };
+          shopping[lieuFinal][weekLabel][ing].count += 1;
+          shopping[lieuFinal][weekLabel][ing].recipes.push({ name: r.nom, day: entry.day, week: weekLabel });
         } else {
-          if (!shopping[lieu][ing]) shopping[lieu][ing] = { count: 0, recipes: [] };
-          shopping[lieu][ing].count += 1;
-          shopping[lieu][ing].recipes.push({ name: r.nom, day: entry.day, week: weekLabel });
+          if (!shopping[lieuFinal][ing]) shopping[lieuFinal][ing] = { count: 0, recipes: [] };
+          shopping[lieuFinal][ing].count += 1;
+          shopping[lieuFinal][ing].recipes.push({ name: r.nom, day: entry.day, week: weekLabel });
         }
       });
     });
@@ -808,8 +790,19 @@ function buildShoppingRow(ing, data, icons, onDelete) {
       label.appendChild(Object.assign(document.createElement("span"), { textContent: icon + " " }));
     }
   }
-  label.appendChild(document.createTextNode(`${ing}${data.count > 1 ? ` (x${data.count})` : ""}`));
-  label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
+const name = document.createElement("span");
+name.textContent = ing;
+
+label.appendChild(name);
+
+if (data.count > 1) {
+  const cnt = document.createElement("span");
+  cnt.classList.add("item-count");
+  cnt.textContent = ` ${data.count} recettes`;
+  label.appendChild(cnt);
+}
+
+label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
 
   // --- Compteur "j'en ai" ---
   const haveWrap = document.createElement("div");
@@ -833,7 +826,7 @@ function buildShoppingRow(ing, data, icons, onDelete) {
   // Bouton + discret
   const haveBtn = document.createElement("button");
   haveBtn.classList.add("have-btn");
-  haveBtn.textContent = "+";
+  haveBtn.textContent = "-";
   haveBtn.title = "J'en ai déjà un";
   haveBtn.onclick = (e) => {
     e.stopPropagation();
@@ -1125,14 +1118,15 @@ async function startApp() {
   const loader = document.getElementById("loader");
   if (loader) loader.style.display = "block";
   try {
-    await Promise.all([fetchRecipes(), fetchIngredientMap()]);
+    await Promise.all([
+  fetchRecipes(),
+  loadIngredientLocations()
+]);
     await initMenu();
   } catch (err) {
     console.error("Erreur au démarrage de l'app :", err);
   } finally {
     if (loader) loader.style.display = "none";
-    title.classList.remove("hidden");
-    wrapper.classList.remove("hidden");
   }
 }
 
