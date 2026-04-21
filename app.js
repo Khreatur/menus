@@ -786,10 +786,13 @@ function buildShoppingData(recipesForMail, locationsMap) {
 // LISTE DE COURSES — RENDU DOM
 // ============================================================
 
-// Construit une ligne d'ingrédient (avec suppression)
+// Construit une ligne d'ingrédient (avec suppression + compteur "j'en ai")
 function buildShoppingRow(ing, data, icons, onDelete) {
   const row   = document.createElement("div");
   row.classList.add("shopping-item");
+
+  // Initialise haveCount si absent
+  if (data.haveCount === undefined) data.haveCount = 0;
 
   const label = document.createElement("span");
   label.style.cursor = "pointer";
@@ -808,6 +811,39 @@ function buildShoppingRow(ing, data, icons, onDelete) {
   label.appendChild(document.createTextNode(`${ing}${data.count > 1 ? ` (x${data.count})` : ""}`));
   label.onclick = () => showRecipesUsingIngredient(ing, data.recipes);
 
+  // --- Compteur "j'en ai" ---
+  const haveWrap = document.createElement("div");
+  haveWrap.classList.add("have-wrap");
+
+  // Badge affiché uniquement si haveCount > 0
+  const haveBadge = document.createElement("span");
+  haveBadge.classList.add("have-badge");
+  haveBadge.title = "Quantité déjà en stock";
+  const updateBadge = () => {
+    if (data.haveCount > 0) {
+      haveBadge.textContent = `j'en ai ${data.haveCount}`;
+      haveBadge.classList.add("visible");
+    } else {
+      haveBadge.textContent = "";
+      haveBadge.classList.remove("visible");
+    }
+  };
+  updateBadge();
+
+  // Bouton + discret
+  const haveBtn = document.createElement("button");
+  haveBtn.classList.add("have-btn");
+  haveBtn.textContent = "+";
+  haveBtn.title = "J'en ai déjà un";
+  haveBtn.onclick = (e) => {
+    e.stopPropagation();
+    data.haveCount++;
+    updateBadge();
+  };
+
+  haveWrap.appendChild(haveBadge);
+  haveWrap.appendChild(haveBtn);
+
   const trash = document.createElement("img");
   trash.src             = "trash.PNG";
   trash.classList.add("icon");
@@ -815,11 +851,16 @@ function buildShoppingRow(ing, data, icons, onDelete) {
   trash.onclick         = (e) => { e.stopPropagation(); onDelete(); };
 
   const left = document.createElement("div");
-  left.style.cssText = "display:flex;align-items:center;gap:8px;";
+  left.style.cssText = "display:flex;align-items:center;gap:8px;flex:1;";
   left.appendChild(label);
-  left.appendChild(trash);
+
+  const right = document.createElement("div");
+  right.style.cssText = "display:flex;align-items:center;gap:6px;margin-left:auto;";
+  right.appendChild(haveWrap);
+  right.appendChild(trash);
 
   row.appendChild(left);
+  row.appendChild(right);
   return row;
 }
 
@@ -957,14 +998,16 @@ function buildShoppingPayload(shopping, iconsMap) {
         Object.entries(items).forEach(([ing, data]) => {
           enriched[lieu][weekLabel][ing] = {
             count: data.count, recipes: data.recipes,
-            icon: iconsMap?.[ing] || null, _byWeek: true
+            icon: iconsMap?.[ing] || null, _byWeek: true,
+            haveCount: data.haveCount || 0
           };
         });
       });
     } else {
       Object.entries(value).forEach(([ing, data]) => {
         enriched[lieu][ing] = {
-          count: data.count, recipes: data.recipes, icon: iconsMap?.[ing] || null
+          count: data.count, recipes: data.recipes, icon: iconsMap?.[ing] || null,
+          haveCount: data.haveCount || 0
         };
       });
     }

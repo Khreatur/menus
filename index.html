@@ -63,5 +63,61 @@
 </div>
   
 <script src="app.js"></script>
+
+<style>
+  /* --- Compteur "j'en ai" dans la liste de courses --- */
+  .shopping-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .have-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .have-badge {
+    display: none;
+    font-size: 0.68rem;
+    color: #a09080;
+    background: #f0ebe2;
+    border: 1px solid #ddd8ce;
+    border-radius: 20px;
+    padding: 1px 7px;
+    white-space: nowrap;
+    font-style: italic;
+  }
+
+  .have-badge.visible {
+    display: inline-block;
+  }
+
+  .have-btn {
+    background: none;
+    border: 1px solid #d0c8be;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+    line-height: 1;
+    color: #a09080;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .have-btn:hover {
+    background: #f0ebe2;
+    border-color: #a09080;
+    color: #5a5248;
+  }
+</style>
 </body>
 </html>

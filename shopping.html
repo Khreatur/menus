@@ -142,6 +142,20 @@
     .item-label { font-size: 0.9rem; color: #2c2c2c; }
     .item-count { font-size: 0.78rem; color: #c8bfb0; margin-left: 3px; }
 
+    /* Badge "j'en ai X" — lecture seule */
+    .have-stock {
+      font-size: 0.65rem;
+      font-style: italic;
+      color: #b0a898;
+      background: #f5f1ea;
+      border: 1px solid #e2ddd4;
+      border-radius: 20px;
+      padding: 1px 7px;
+      white-space: nowrap;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
     /* ---- CHAMP AJOUT LIBRE ---- */
     .add-row { padding: 6px 20px 10px; }
 
@@ -298,6 +312,14 @@ function buildRow(ing, data) {
   left.appendChild(label);
   row.appendChild(check);
   row.appendChild(left);
+
+  if (data.haveCount && data.haveCount > 0) {
+    const haveEl = document.createElement('span');
+    haveEl.classList.add('have-stock');
+    haveEl.textContent = `j'en ai ${data.haveCount}`;
+    row.appendChild(haveEl);
+  }
+
   return row;
 }
 
